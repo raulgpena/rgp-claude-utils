@@ -1,0 +1,218 @@
+##
+## GitHub Actions - Terraform Dev Environment
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Triggers:
+##   - Push to main branch (auto apply)
+##   - Pull Request to main (plan only, no apply)
+##   - Manual dispatch (plan or apply)
+##
+
+name: Terraform Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "environments/dev/**"
+      - "modules/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "environments/dev/**"
+      - "modules/**"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to run"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+  pull-requests: write  # Allows posting plan output as PR comment
+
+env:
+  TF_WORKING_DIR: environments/dev
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action || (github.event_name == 'pull_request' && 'plan') || 'apply' }}
+    runs-on: ubuntu-latest
+    environment: development
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+
+      ##=======================================================================
+      ## SETUP
+      ##=======================================================================
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.5"
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_WORKING_DIR }}/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', env.TF_WORKING_DIR)) }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      ##=======================================================================
+      ## TERRAFORM INIT
+      ##=======================================================================
+
+      - name: Terraform Init
+        run: terraform init
+
+      ##=======================================================================
+      ## TERRAFORM VALIDATE & FORMAT CHECK
+      ##=======================================================================
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      ##=======================================================================
+      ## TERRAFORM PLAN
+      ##=======================================================================
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan \
+            -var="postgres_admin_username=${{ secrets.TF_VAR_POSTGRES_ADMIN_USERNAME }}" \
+            -var="postgres_admin_password=${{ secrets.TF_VAR_POSTGRES_ADMIN_PASSWORD }}" \
+            -var="intellxxdna_admin_username=${{ secrets.TF_VAR_INTELLXXDNA_ADMIN_USERNAME }}" \
+            -var="intellxxdna_admin_password=${{ secrets.TF_VAR_INTELLXXDNA_ADMIN_PASSWORD }}" \
+            -var="shared_container_registry_login_server=${{ vars.TF_VAR_ACR_LOGIN_SERVER }}" \
+            -var="shared_container_registry_username=${{ secrets.TF_VAR_ACR_USERNAME }}" \
+            -var="shared_container_registry_password=${{ secrets.TF_VAR_ACR_PASSWORD }}" \
+            -var="github_token=${{ secrets.TF_VAR_GITHUB_TOKEN }}" \
+            -var="lexxi_github_repo_url=${{ vars.TF_VAR_LEXXI_GITHUB_REPO_URL }}" \
+            -var="rd_github_repo_url=${{ vars.TF_VAR_RD_GITHUB_REPO_URL }}" \
+            -var="keycloak_admin_password=${{ secrets.TF_VAR_KEYCLOAK_ADMIN_PASSWORD }}" \
+            -var="rd_swagger_username=${{ secrets.TF_VAR_RD_SWAGGER_USERNAME }}" \
+            -var="rd_swagger_pw=${{ secrets.TF_VAR_RD_SWAGGER_PW }}" \
+            -var="rd_environment=${{ vars.TF_VAR_RD_ENVIRONMENT }}" \
+            -var="rd_jwt_secret_key=${{ secrets.TF_VAR_RD_JWT_SECRET_KEY }}" \
+            -var="rd_cors_allow_origins=${{ vars.TF_VAR_RD_CORS_ALLOW_ORIGINS }}" \
+            -var="rd_access_token_expire_minutes=${{ vars.TF_VAR_RD_ACCESS_TOKEN_EXPIRE_MINUTES }}" \
+            -var="rd_sentry_dsn=${{ vars.TF_VAR_RD_SENTRY_DSN }}" \
+            -var="mlflow_flask_secret_key=${{ secrets.TF_VAR_MLFLOW_FLASK_SECRET_KEY }}" \
+            -var="mlflow_admin_username=${{ secrets.TF_VAR_MLFLOW_ADMIN_USERNAME }}" \
+            -var="mlflow_admin_password=${{ secrets.TF_VAR_MLFLOW_ADMIN_PASSWORD }}" \
+            -var="lexxi_openai_token=${{ secrets.TF_VAR_LEXXI_OPENAI_TOKEN }}" \
+            -var="lexxi_cors_allow_origins=${{ vars.TF_VAR_LEXXI_CORS_ALLOW_ORIGINS }}" \
+            -var="lexxi_sentry_dsn=${{ vars.TF_VAR_LEXXI_SENTRY_DSN }}" \
+            -var="keycloak_admin_username=${{ secrets.TF_VAR_KEYCLOAK_ADMIN_USERNAME }}" \
+            -var="container_app_max_replicas=3" \
+            -var="mlflow_enabled=${{ vars.TF_VAR_MLFLOW_ENABLED }}" \
+            -var="mlflow_tracing_enabled=${{ vars.TF_VAR_MLFLOW_TRACING_ENABLED }}" \
+            -var="mlflow_tracking_uri=${{ vars.TF_VAR_MLFLOW_TRACKING_URL }}" \
+            -var="mlflow_allowed_origins=${{ vars.TF_VAR_MLFLOW_ALLOWED_ORIGINS }}"
+        continue-on-error: true
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      ##=======================================================================
+      ## TERRAFORM APPLY (only on push to main or manual dispatch with apply)
+      ##=======================================================================
+
+      - name: Terraform Apply
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: terraform apply -auto-approve tfplan
+
+      ##=======================================================================
+      ## TERRAFORM DESTROY (only on manual dispatch with destroy)
+      ##=======================================================================
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+        run: |
+          terraform destroy -auto-approve \
+            -var="postgres_admin_username=${{ secrets.TF_VAR_POSTGRES_ADMIN_USERNAME }}" \
+            -var="postgres_admin_password=${{ secrets.TF_VAR_POSTGRES_ADMIN_PASSWORD }}" \
+            -var="intellxxdna_admin_username=${{ secrets.TF_VAR_INTELLXXDNA_ADMIN_USERNAME }}" \
+            -var="intellxxdna_admin_password=${{ secrets.TF_VAR_INTELLXXDNA_ADMIN_PASSWORD }}" \
+            -var="shared_container_registry_login_server=${{ vars.TF_VAR_ACR_LOGIN_SERVER }}" \
+            -var="shared_container_registry_username=${{ secrets.TF_VAR_ACR_USERNAME }}" \
+            -var="shared_container_registry_password=${{ secrets.TF_VAR_ACR_PASSWORD }}" \
+            -var="github_token=${{ secrets.TF_VAR_GITHUB_TOKEN }}" \
+            -var="lexxi_github_repo_url=${{ vars.TF_VAR_LEXXI_GITHUB_REPO_URL }}" \
+            -var="rd_github_repo_url=${{ vars.TF_VAR_RD_GITHUB_REPO_URL }}" \
+            -var="keycloak_admin_password=${{ secrets.TF_VAR_KEYCLOAK_ADMIN_PASSWORD }}" \
+            -var="rd_swagger_username=${{ secrets.TF_VAR_RD_SWAGGER_USERNAME }}" \
+            -var="rd_swagger_pw=${{ secrets.TF_VAR_RD_SWAGGER_PW }}" \
+            -var="rd_environment=${{ vars.TF_VAR_RD_ENVIRONMENT }}" \
+            -var="rd_jwt_secret_key=${{ secrets.TF_VAR_RD_JWT_SECRET_KEY }}" \
+            -var="rd_cors_allow_origins=${{ vars.TF_VAR_RD_CORS_ALLOW_ORIGINS }}" \
+            -var="rd_access_token_expire_minutes=${{ vars.TF_VAR_RD_ACCESS_TOKEN_EXPIRE_MINUTES }}" \
+            -var="rd_sentry_dsn=${{ vars.TF_VAR_RD_SENTRY_DSN }}" \
+            -var="mlflow_flask_secret_key=${{ secrets.TF_VAR_MLFLOW_FLASK_SECRET_KEY }}" \
+            -var="mlflow_admin_username=${{ secrets.TF_VAR_MLFLOW_ADMIN_USERNAME }}" \
+            -var="mlflow_admin_password=${{ secrets.TF_VAR_MLFLOW_ADMIN_PASSWORD }}" \
+            -var="lexxi_openai_token=${{ secrets.TF_VAR_LEXXI_OPENAI_TOKEN }}" \
+            -var="lexxi_cors_allow_origins=${{ vars.TF_VAR_LEXXI_CORS_ALLOW_ORIGINS }}" \
+            -var="lexxi_sentry_dsn=${{ vars.TF_VAR_LEXXI_SENTRY_DSN }}" \
+            -var="lexxi_swagger_username=${{ secrets.TF_VAR_LEXXI_SWAGGER_USERNAME }}" \
+            -var="lexxi_swagger_pw=${{ secrets.TF_VAR_LEXXI_SWAGGER_PW }}" \
+            -var="keycloak_admin_username=${{ secrets.TF_VAR_KEYCLOAK_ADMIN_USERNAME }}" \
+            -var="container_app_max_replicas=3" \
+            -var="mlflow_enabled=${{ vars.TF_VAR_MLFLOW_ENABLED }}" \
+            -var="mlflow_tracing_enabled=${{ vars.TF_VAR_MLFLOW_TRACING_ENABLED }}" \
+            -var="mlflow_tracking_uri=${{ vars.TF_VAR_MLFLOW_TRACKING_URL }}" \
+            -var="mlflow_allowed_origins=${{ vars.TF_VAR_MLFLOW_ALLOWED_ORIGINS }}" \
+            -var="prod_storage_account_name=${{ vars.TF_VAR_STORAGE_ACCOUNT_NAME }}" \
+            -var="prod_storage_account_key=${{ secrets.TF_STORAGE_ACCOUNT_KEY }}"

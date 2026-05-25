@@ -1,0 +1,22 @@
+{
+  "id": "a1000002-0000-0000-0000-000000000001",
+  "name": "GET /v1/patients/pt-001",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/patients/pt-001"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "patientId": "pt-001",
+      "displayName": "Patient-Alpha",
+      "sexAtBirth": "female",
+      "yearOfBirth": 1975,
+      "dateOfBirth": null,
+      "adopted": false,
+      "familyHistoryAvailable": true
+    }
+  },
+  "priority": 1
+}

@@ -1,0 +1,272 @@
+##
+## Azure Front Door Module - Main Configuration
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Creates Azure Front Door Standard with managed HTTPS for dev
+## Configuration:
+## - SKU: Standard (cost-optimized, ~$6/month)
+## - HTTPS: Azure-managed (free, auto-renewal)
+## - WAF: Enabled in Detection mode
+## - Backend: Container App (internal FQDN)
+##
+## Features:
+## - Global anycast CDN
+## - Built-in DDoS protection
+## - Managed certificate (*.azurefd.net domain)
+## - Health probes & auto-failover
+##
+
+##=============================================================================
+## WEB APPLICATION FIREWALL POLICY (FOR FRONT DOOR)
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_firewall_policy" "waf_policy" {
+
+  count               = var.enable_waf ? 1 : 0
+  name                = "waf${var.environment}fd"
+  resource_group_name = var.resource_group_name
+  sku_name            = var.front_door_sku
+  tags                = var.tags
+
+  # Policy mode: Detection (logs) or Prevention (blocks)
+  mode = var.waf_mode
+
+  # Managed rule set only supported with Premium SKU
+  # For Standard SKU, WAF uses default DDoS and basic protection
+  dynamic "managed_rule" {
+    for_each = var.front_door_sku == "Premium_AzureFrontDoor" ? [1] : []
+    content {
+      type    = "DefaultRuleSet"
+      version = "1.0"
+      action  = var.waf_mode == "Prevention" ? "Block" : "Log"
+    }
+  }
+
+}
+
+##=============================================================================
+## FRONT DOOR PROFILE
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_profile" "fd_profile" {
+
+  name                = "${var.resource_prefix}-fd"
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
+  sku_name            = var.front_door_sku
+
+  response_timeout_seconds = 120
+}
+
+##=============================================================================
+## FRONT DOOR ENDPOINT
+##=============================================================================
+## Public endpoint for accessing the service via CDN
+
+resource "azurerm_cdn_frontdoor_endpoint" "fd_endpoint" {
+
+  name                     = "${var.resource_prefix}-fd-endpoint"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  enabled                  = true
+}
+
+##=============================================================================
+## ORIGIN GROUP (BACKEND POOL) - PER BACKEND WITH CUSTOM HEALTH PROBE
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_origin_group" "backend_group" {
+
+  for_each = { for idx, backend in var.backends : backend.name => backend }
+
+  name                     = "${var.resource_prefix}-${each.value.name}-group"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  session_affinity_enabled = each.value.session_affinity
+
+  # Health probe configuration - customized per backend
+  health_probe {
+    interval_in_seconds = 60
+    path                = each.value.health_path
+    protocol            = "Http"
+    request_type        = "GET"
+  }
+
+  # Load balancing settings
+  load_balancing {
+    sample_size                     = 4
+    successful_samples_required     = 3
+  }
+}
+
+##=============================================================================
+## ORIGIN (BACKEND - MULTIPLE BACKENDS WITH DYNAMIC CREATION)
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_origin" "backend_origin" {
+
+  for_each = { for idx, backend in var.backends : backend.name => backend }
+
+  name                     = "${var.resource_prefix}-${each.value.name}-origin"
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.backend_group[each.value.name].id
+  enabled                  = true
+
+  host_name                       = each.value.fqdn
+  http_port                       = 80  # Container Apps exposes on port 80, not the container target port
+  https_port                      = 443
+  origin_host_header              = each.value.fqdn
+  certificate_name_check_enabled  = true
+  priority                        = 1
+  weight                          = 1000
+}
+
+##=============================================================================
+## RULE SET FOR URL PREFIX STRIPPING
+##=============================================================================
+
+locals {
+  backends_map = { for b in var.backends : b.name => b }
+
+  # Backends that explicitly request path prefix stripping
+  backends_with_strip = {
+    for name, b in local.backends_map : name => b if b.strip_path_prefix == true
+  }
+
+  has_strip_backends = length(local.backends_with_strip) > 0
+}
+
+resource "azurerm_cdn_frontdoor_rule_set" "strip_prefix_rules" {
+  count                    = local.has_strip_backends ? 1 : 0
+  name                     = "${replace(var.resource_prefix, "-", "")}stripprefix"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+}
+
+resource "azurerm_cdn_frontdoor_rule" "strip_path_prefix" {
+  for_each = local.backends_with_strip
+
+  name                      = "StripPrefix${title(each.value.name)}"
+  cdn_frontdoor_rule_set_id = azurerm_cdn_frontdoor_rule_set.strip_prefix_rules[0].id
+  # Order is alphabetical by name to ensure deterministic ordering
+  order             = index(sort(keys(local.backends_with_strip)), each.key) + 1
+  behavior_on_match = "Continue"
+
+  conditions {
+    url_path_condition {
+      operator         = "BeginsWith"
+      negate_condition = false
+      # e.g. path="/rd/*" → match_values=["/rd/"]
+      match_values = ["/${trimsuffix(trimprefix(each.value.path, "/"), "*")}"]
+      transforms   = ["Lowercase"]
+    }
+  }
+
+  actions {
+    url_rewrite_action {
+      # Strip the prefix: /rd/docs → /docs
+      source_pattern          = "/${trimsuffix(trimprefix(each.value.path, "/"), "*")}"
+      destination             = "/"
+      preserve_unmatched_path = true
+    }
+  }
+}
+
+##=============================================================================
+## ROUTES (PATH-BASED ROUTING TO DIFFERENT BACKENDS)
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_route" "backend_route" {
+
+  for_each = local.backends_map
+
+  name                          = "${var.resource_prefix}-${each.value.name}-route"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.fd_endpoint.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.backend_group[each.value.name].id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.backend_origin[each.value.name].id]
+  cdn_frontdoor_origin_path     = each.value.name == "keycloak" ? null : "/"
+  cdn_frontdoor_custom_domain_ids = var.custom_domain_host_name != null ? [azurerm_cdn_frontdoor_custom_domain.custom_domain[0].id] : []
+  cdn_frontdoor_rule_set_ids    = each.value.strip_path_prefix ? [azurerm_cdn_frontdoor_rule_set.strip_prefix_rules[0].id] : null
+  enabled = true
+
+  # Use HTTP for internal backends (unless specifically HTTPS)
+  forwarding_protocol = each.value.protocol == "Https" ? "HttpsOnly" : "HttpOnly"
+  patterns_to_match   = distinct([each.value.path, trimsuffix(each.value.path, "/*")])
+  supported_protocols = ["Http", "Https"]
+}
+
+##=============================================================================
+## CUSTOM DOMAIN
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_custom_domain" "custom_domain" {
+  count = var.custom_domain_host_name != null ? 1 : 0
+
+  name                     = replace(replace(var.custom_domain_host_name, ".", "-"), "_", "-")
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+  host_name                = var.custom_domain_host_name
+
+  tls {
+    certificate_type    = "ManagedCertificate"
+    minimum_tls_version = "TLS12"
+  }
+}
+
+
+##=============================================================================
+## WAF POLICY ASSOCIATION
+##=============================================================================
+
+resource "azurerm_cdn_frontdoor_security_policy" "waf_association" {
+
+  count = var.enable_waf ? 1 : 0
+
+  name                     = "${var.resource_prefix}-waf-policy-assoc"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.fd_profile.id
+
+  security_policies {
+    firewall {
+      cdn_frontdoor_firewall_policy_id = azurerm_cdn_frontdoor_firewall_policy.waf_policy[0].id
+
+      association {
+        domain {
+          cdn_frontdoor_domain_id = azurerm_cdn_frontdoor_endpoint.fd_endpoint.id
+        }
+
+        patterns_to_match = ["/*"]
+      }
+    }
+  }
+}
+
+##=============================================================================
+## DIAGNOSTIC SETTINGS
+##=============================================================================
+## Enable WAF and access logs to Log Analytics for monitoring and troubleshooting
+
+resource "azurerm_monitor_diagnostic_setting" "front_door_diagnostics" {
+
+  count = var.log_analytics_workspace_id != null ? 1 : 0
+
+  name                       = "${var.resource_prefix}-fd-diagnostics"
+  target_resource_id         = azurerm_cdn_frontdoor_profile.fd_profile.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "FrontDoorAccessLog"
+  }
+
+  enabled_log {
+    category = "FrontDoorHealthProbeLog"
+  }
+
+  enabled_log {
+    category = "FrontDoorWebApplicationFirewallLog"
+  }
+
+  metric {
+    category = "AllMetrics"
+  }
+}
+
+##=============================================================================
+## CUSTOM DOMAIN (OPTIONAL - FOR PRODUCTION)
+##=============================================================================
+## Note: For production, you would configure a custom domain here
+## For dev, we use the auto-generated Azure FD domain (*.azurefd.net)

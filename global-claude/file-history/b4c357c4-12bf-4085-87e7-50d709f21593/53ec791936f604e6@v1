@@ -1,0 +1,428 @@
+"""Clinical Chat Agent — OpenAI Agents SDK.
+
+Streaming conversational agent that helps clinicians understand patient
+genomic results. Receives context from prior pipeline steps (genomic
+interpretation + clinical discussion) and answers follow-up questions.
+
+Uses SNP obfuscation ({SNP-X} placeholders) to prevent gene-name bias
+in LLM output. The frontend resolves placeholders using the snp_mapping
+emitted at stream start.
+
+Architecture:
+    - AI Layer only: generates text, never queries DB
+    - All patient/SNP data arrives via the request (from prior steps)
+    - Obfuscation is deterministic and stable across chat turns
+    - Post-processing normalizes placeholders and strips leaked rs_ids
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import textwrap
+from collections.abc import AsyncGenerator
+from typing import Any
+
+from agents import Agent, ModelSettings, Runner
+from openai.types.responses import ResponseTextDeltaEvent
+
+logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# SYSTEM PROMPT
+# ═══════════════════════════════════════════════════════════════════════
+
+_BASE_INSTRUCTIONS = textwrap.dedent("""\
+    You are Lexxi, a genomics expert helping an experienced clinician \
+    interpret a patient's SNP results through conversation. You answer \
+    follow-up questions after the clinician has already reviewed the \
+    clinical discussion summaries for each concern.
+
+    ## Context You Have Access To
+
+    You will be provided with SNP details for each clinical concern, \
+    including genotype, prevalence, odds ratio, key points, and \
+    clinical significance. The clinician has already seen a summary \
+    of these results and is now asking deeper questions.
+
+    Use this information to answer questions about the patient's \
+    genomic results.
+
+    ## Tone & Authority
+
+    - Speak with absolute confidence and authority. All information \
+    provided has been thoroughly reviewed and validated by human \
+    genomics experts — treat it as established fact, not speculation.
+    - NEVER hedge with phrases like "may contribute to", "possibly \
+    cause", "potentially linked to", "could be associated with", \
+    "might play a role in", or similar qualifiers. Instead, use \
+    direct, definitive language: "causes", "increases risk of", \
+    "impairs", "reduces", "drives".
+    - The clinician reading this needs to feel certain about the \
+    findings so they can act decisively.
+
+    REMEMBER: Speak with absolute confidence. NEVER say "probably", \
+    "possibly", "may", or "might". Use definitive language.
+
+    ## Audience
+
+    - You are talking TO a clinician — an expert physician who is \
+    responsible for taking care of this patient.
+    - DO NOT include language like "A healthcare provider might provide \
+    further insight..." or "Consult a doctor to..." — you ARE talking \
+    to the doctor.
+    - Direct your answers to help them interpret genetic results and \
+    manage their patient.
+
+    ## Clinical Rules
+
+    - The prevalence of the SNP must be mentioned if it is below 15%.
+    - Whenever you mention an odds ratio, you must say what it is for.
+    - You must include one sentence about the gene function when \
+    discussing a specific SNP.
+    - Do not mention the patient's actual genotype letters (e.g. AA \
+    or GG). Instead reference the patient's copy numbers: "this \
+    patient has two copies of {SNP-X} meaning...". Copy number is \
+    preferred to listing the genotype.
+    - Only mention findings that DO impact the patient. Do not mention \
+    things like "the odds ratio is 1.00, indicating no change in \
+    risk" — skip neutral findings.
+    - DO NOT make treatment recommendations — only provide information \
+    about the genomic test results and their clinical implications.
+
+    ## Response Style
+
+    - Base your responses ONLY on the information provided below. Do \
+    not draw on background knowledge or outside sources.
+    - Link the patient's results to the clinical significance as \
+    described in the provided information. Only mention clinical \
+    details in the provided facts, but make sure to explain how \
+    this result is likely to impact the patient's health.
+    - Use markdown formatting: **bold** for emphasis, bullet points \
+    for lists, and newlines for paragraph separation.
+    - Keep responses concise, written for a busy and expert physician. \
+    Each paragraph should be 3-4 sentences, tightly focused on \
+    critical information.
+
+    ## SNP Name Format (CRITICAL)
+
+    SNP names have been replaced with placeholders like {SNP-1}, {SNP-2}, \
+    etc. Your response will be post-processed to replace these placeholders \
+    with actual gene names.
+
+    **You MUST follow these rules exactly:**
+    - When referring to any SNP, use ONLY the exact format `{SNP-1}`, \
+    `{SNP-2}`, etc. with curly braces.
+    - Do NOT use phrases like "SNP 1", "the first SNP", "the second \
+    variant", or any gene names.
+    - Do NOT use "SNP-1" without the curly braces.
+    - Do NOT include any rs_ids (e.g., rs1234567) in your response.
+    - Example correct usage: "The patient's {SNP-1} genotype indicates..."
+    - Example incorrect usage: "SNP 1 shows..." or "The first SNP reveals..."
+""")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# SNP MAPPING
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _build_global_snp_mapping(
+    concerns: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
+    """Build a global SNP mapping from all concerns' SNPs.
+
+    Assigns each unique SNP (by rs_id) a global {SNP-X} placeholder.
+    Deterministic: same concerns in same order → same mapping.
+
+    Args:
+        concerns: List of concern dicts with concern_name, snps,
+                  discussion_text.
+
+    Returns:
+        Tuple of:
+            snp_mapping: {"SNP-1": {"gene_symbol": ..., "rs_id": ...}, ...}
+            reverse_lookup: {"apoe": "{SNP-1}", "rs429358": "{SNP-1}", ...}
+                Keys are lowercased for case-insensitive matching.
+    """
+    snp_mapping: dict[str, dict[str, str]] = {}
+    reverse_lookup: dict[str, str] = {}
+    seen_rs_ids: set[str] = set()
+    index = 1
+
+    for concern in concerns:
+        for snp in concern.get("snps", []):
+            rs_id = snp.get("rs_id", "")
+            if not rs_id or rs_id in seen_rs_ids:
+                continue
+
+            seen_rs_ids.add(rs_id)
+            placeholder = f"{{SNP-{index}}}"
+            key = f"SNP-{index}"
+
+            snp_mapping[key] = {
+                "gene_symbol": snp.get("gene_symbol", ""),
+                "rs_id": rs_id,
+                "key_point": snp.get("key_point", ""),
+                "clinical_significance": snp.get("clinical_significance", ""),
+            }
+
+            gene_symbol = snp.get("gene_symbol", "")
+            if gene_symbol:
+                reverse_lookup[gene_symbol.lower()] = placeholder
+            reverse_lookup[rs_id.lower()] = placeholder
+
+            index += 1
+
+    return snp_mapping, reverse_lookup
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# OBFUSCATION
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _obfuscate_text(text: str, reverse_lookup: dict[str, str]) -> str:
+    """Replace gene symbols and rs_ids with {SNP-X} placeholders.
+
+    Sorts replacements by term length descending to prevent partial
+    matches (e.g., "IL6R" is replaced before "IL6").
+    """
+    result = text
+    for term, placeholder in sorted(reverse_lookup.items(), key=lambda x: -len(x[0])):
+        result = re.sub(
+            rf"\b{re.escape(term)}\b",
+            placeholder,
+            result,
+            flags=re.IGNORECASE,
+        )
+    return result
+
+
+def _obfuscate_messages(
+    messages: list[dict[str, str]],
+    reverse_lookup: dict[str, str],
+) -> list[dict[str, str]]:
+    """Obfuscate user messages; leave assistant messages intact.
+
+    User messages contain raw gene names that need obfuscation.
+    Assistant messages already contain {SNP-X} placeholders from
+    prior streaming turns.
+    """
+    obfuscated = []
+    for msg in messages:
+        if msg.get("role") == "user":
+            obfuscated.append(
+                {
+                    "role": "user",
+                    "content": _obfuscate_text(msg.get("content", ""), reverse_lookup),
+                }
+            )
+        else:
+            obfuscated.append(dict(msg))
+    return obfuscated
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CLINICAL CONTEXT BUILDER
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _build_snp_detail_block(
+    snp: dict[str, Any],
+    placeholder: str,
+    reverse_lookup: dict[str, str],
+) -> str:
+    """Build a detail block for a single SNP (all text obfuscated)."""
+    lines = [f"**{placeholder}**"]
+
+    genotype = snp.get("genotype")
+    if genotype:
+        lines.append(f"  - Genotype: {genotype}")
+
+    odds_ratio = snp.get("odds_ratio")
+    if odds_ratio is not None:
+        lines.append(f"  - Odds Ratio: {odds_ratio}")
+
+    freq = snp.get("genotype_frequency")
+    if freq is not None:
+        lines.append(f"  - Prevalence: {freq:.1f}%")
+
+    key_point = snp.get("key_point", "")
+    if key_point:
+        lines.append(f"  - Key Point: {_obfuscate_text(key_point, reverse_lookup)}")
+
+    clinical_sig = snp.get("clinical_significance", "")
+    if clinical_sig:
+        lines.append(
+            f"  - Clinical Significance: " f"{_obfuscate_text(clinical_sig, reverse_lookup)}"
+        )
+
+    return "\n".join(lines)
+
+
+def _build_clinical_context(
+    concerns: list[dict[str, Any]],
+    snp_mapping: dict[str, dict[str, str]],
+    reverse_lookup: dict[str, str],
+) -> str:
+    """Build the full clinical context for agent instructions.
+
+    Structures context by concern with per-concern SNP details.
+    All gene names/rs_ids use global {SNP-X} placeholders.
+    """
+    rs_id_to_placeholder: dict[str, str] = {
+        info["rs_id"]: f"{{{key}}}" for key, info in snp_mapping.items()
+    }
+
+    sections: list[str] = []
+
+    for concern in concerns:
+        concern_name = concern.get("concern_name", "Unknown")
+        lines = [f"### {concern_name}"]
+
+        snps = concern.get("snps", [])
+        if snps:
+            lines.append("\n**SNP Details:**")
+            for snp in snps:
+                rs_id = snp.get("rs_id", "")
+                placeholder = rs_id_to_placeholder.get(rs_id, "")
+                if placeholder:
+                    lines.append(_build_snp_detail_block(snp, placeholder, reverse_lookup))
+
+        sections.append("\n".join(lines))
+
+    return "## Patient Clinical Context\n\n" + "\n\n---\n\n".join(sections)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# POST-PROCESSING
+# ═══════════════════════════════════════════════════════════════════════
+
+_ORDINALS: dict[int, list[str]] = {
+    1: ["first SNP", "1st SNP"],
+    2: ["second SNP", "2nd SNP"],
+    3: ["third SNP", "3rd SNP"],
+    4: ["fourth SNP", "4th SNP"],
+    5: ["fifth SNP", "5th SNP"],
+    6: ["sixth SNP", "6th SNP"],
+    7: ["seventh SNP", "7th SNP"],
+    8: ["eighth SNP", "8th SNP"],
+    9: ["ninth SNP", "9th SNP"],
+    10: ["tenth SNP", "10th SNP"],
+}
+
+
+def _post_process_response(text: str, num_snps: int) -> str:
+    """Normalize SNP placeholders and strip any leaked rs_ids.
+
+    Handles LLM variations like {SNP 1}, SNP-1, SNP1, ordinal references,
+    and normalizes them all to the canonical {SNP-X} format.
+    """
+    # Handle SNP-10+ before SNP-1 to avoid partial matches
+    for i in sorted(range(1, num_snps + 1), reverse=True):
+        # Use word boundary \b to ensure 1 does not match 10, 11, etc.
+        pattern = rf"\{{?\s*SNP[-\s]?{i}\b\s*\}}?"
+        text = re.sub(pattern, f"{{SNP-{i}}}", text, flags=re.IGNORECASE)
+
+    for i, phrases in _ORDINALS.items():
+        if i <= num_snps:
+            for phrase in phrases:
+                text = re.sub(
+                    rf"\b{phrase}\b",
+                    f"{{SNP-{i}}}",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+
+    text = re.sub(r"\brs\d+\b", "", text)
+    return text
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# STREAMING RUNNER
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def run_clinical_chat_stream(
+    messages: list[dict[str, str]],
+    concerns: list[dict[str, Any]],
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Stream a clinical chat response with SNP obfuscation.
+
+    Builds a global SNP mapping from all concerns, obfuscates user
+    messages and clinical context, then streams the agent response
+    with {SNP-X} placeholders.
+
+    SSE event types:
+        snp_mapping: {type, content: {"SNP-1": {...}, ...}}
+            Sent first so frontend can resolve placeholders in real time.
+        delta: {type, content: str}
+            Token delta from the LLM (may contain partial placeholders).
+        done: {type, final_text: str}
+            Post-processed final text with normalized placeholders.
+        error: {type, content: str}
+            On failure.
+
+    Args:
+        messages: Conversation history as [{role, content}].
+            User messages contain raw gene names; assistant messages
+            contain {SNP-X} placeholders from prior turns.
+        concerns: Concern dicts with concern_name and snps.
+            Same schema as ClinicalDiscussionRequest.concerns.
+
+    Yields:
+        SSE-ready dicts for each event.
+    """
+    try:
+        # 1. Build global SNP mapping (deterministic)
+        snp_mapping, reverse_lookup = _build_global_snp_mapping(concerns)
+
+        logger.info(
+            "[clinical_chat] Starting stream with %d concerns, %d unique SNPs",
+            len(concerns),
+            len(snp_mapping),
+        )
+
+        # 2. Emit snp_mapping so frontend can resolve placeholders immediately
+        yield {"type": "snp_mapping", "content": snp_mapping}
+
+        # 3. Build clinical context (fully obfuscated)
+        clinical_context = _build_clinical_context(concerns, snp_mapping, reverse_lookup)
+
+        # 4. Build agent with dynamic instructions
+        instructions = f"{_BASE_INSTRUCTIONS}\n\n{clinical_context}"
+        agent = Agent(
+            name="Clinical Chat",
+            instructions=instructions,
+            model="gpt-4o",
+            model_settings=ModelSettings(temperature=0, max_tokens=2000),
+        )
+
+        # 5. Obfuscate user messages (assistant messages kept as-is)
+        obfuscated_messages = _obfuscate_messages(messages, reverse_lookup)
+
+        # 6. Stream response
+        result = Runner.run_streamed(agent, input=obfuscated_messages)
+        accumulated: list[str] = []
+
+        async for event in result.stream_events():
+            if event.type == "raw_response_event" and isinstance(
+                event.data, ResponseTextDeltaEvent
+            ):
+                delta = event.data.delta
+                accumulated.append(delta)
+                yield {"type": "delta", "content": delta}
+
+        # 7. Post-process and emit final text
+        raw_text = "".join(accumulated)
+        final_text = _post_process_response(raw_text, len(snp_mapping))
+
+        logger.info("[clinical_chat] Completed: %d chars", len(final_text))
+
+        yield {"type": "done", "final_text": final_text}
+
+    except Exception as e:
+        logger.exception("[clinical_chat] Error in stream")
+        yield {"type": "error", "content": str(e)}

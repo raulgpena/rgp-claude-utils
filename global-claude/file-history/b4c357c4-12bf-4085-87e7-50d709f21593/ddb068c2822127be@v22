@@ -1,0 +1,514 @@
+"""MLflow tracking and tracing utilities for OpenAI agent calls.
+
+Provides:
+- ``configure()``: one-time setup that enables experiment tracking AND
+  auto-tracing via ``mlflow.openai.autolog()``. Auto-tracing captures every
+  OpenAI / Agents SDK call as a trace span (tokens, latency, model I/O) with
+  zero per-call instrumentation.
+- ``session_run()``: context manager that opens a *parent* MLflow run. Use
+  this to group all concern discussions from one patient session under a
+  single collapsible entry in the Experiments UI.
+- ``agent_run()``: context manager that wraps one agent invocation with an
+  MLflow *child* run (params + metrics). Automatically nests under an active
+  ``session_run``; starts as a top-level run when used standalone. Degrades
+  gracefully to a no-op when MLflow is disabled or unreachable.
+- ``trace_span()``: lightweight context manager for manual parent spans.
+  Groups auto-logged child spans under a descriptive label in the Traces UI.
+- ``log_text()``: log a text artifact to the active run.
+- ``log_dict()``: log a JSON artifact to the active run.
+- ``log_token_usage()``: extract and log token counts from an OpenAI Agents
+  SDK result object as metrics on the active run.
+
+Usage::
+
+    # Group multiple agent calls under one parent run
+    with session_run("clinical_session", tags={"concern_count": "5"}):
+        for concern in concerns:
+            with agent_run("clinical_discussion", {"concern": concern}) as m:
+                result = await Runner.run(agent, message)
+                log_text(result.final_output, "discussion.txt")
+                log_token_usage(result)
+                m["output_chars"] = len(result.final_output)
+            # latency_ms recorded automatically on agent_run exit
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import re
+import time
+from contextlib import contextmanager
+from typing import Any, Generator
+
+logger = logging.getLogger(__name__)
+
+_enabled: bool = False
+_tracing_enabled: bool = False
+_default_tags: dict[str, str] = {}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _safe_filename(name: str) -> str:
+    """Convert an arbitrary string to a safe artifact filename stem."""
+    return re.sub(r"[^\w\-]", "_", name)
+
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+
+
+def configure(
+    *,
+    enabled: bool,
+    tracking_uri: str,
+    experiment_name: str,
+    username: str = "",
+    password: str = "",
+    tracing_enabled: bool = True,
+    default_tags: dict[str, str] | None = None,
+) -> None:
+    """Configure MLflow tracking and tracing. Called once at application startup.
+
+    Controlled by two independent flags:
+
+    - ``enabled`` (env: ``MLFLOW_ENABLED``): master switch for all MLflow
+      features. When ``False``, nothing is initialised.
+    - ``tracing_enabled`` (env: ``MLFLOW_TRACING_ENABLED``): controls
+      distributed tracing only (``mlflow.openai.autolog()`` and
+      ``trace_span()``).  Set to ``False`` to keep experiment tracking
+      (runs / params / metrics) while skipping trace collection.
+
+    ``default_tags`` are attached to the MLflow experiment and merged into
+    every run/session opened by this process. Call-level tags take precedence
+    on conflict. Typical usage: ``{"environment": "production"}``.
+
+    When ``username`` and ``password`` are provided they are written to the
+    ``MLFLOW_TRACKING_USERNAME`` / ``MLFLOW_TRACKING_PASSWORD`` environment
+    variables that the MLflow client reads for HTTP basic authentication.
+
+    Args:
+        enabled: Master switch — whether to enable any MLflow feature.
+        tracking_uri: MLflow tracking server URI.
+        experiment_name: Name of the MLflow experiment to log runs under.
+        username: Basic auth username for the tracking server.
+        password: Basic auth password for the tracking server.
+        tracing_enabled: Whether to enable distributed tracing via
+            ``mlflow.openai.autolog()`` and ``trace_span()``.
+        default_tags: Key/value tags attached to every run and to the
+            experiment itself. Useful for environment and version metadata.
+    """
+    global _enabled, _tracing_enabled, _default_tags
+
+    # Assign default_tags before the early-return guard so a subsequent call
+    # with enabled=True does not carry stale tags from a prior disabled call.
+    _default_tags = default_tags or {}
+
+    _enabled = enabled
+    _tracing_enabled = enabled and tracing_enabled
+
+    if not enabled:
+        logger.debug("[mlflow] Tracking disabled")
+        return
+
+    try:
+        import mlflow
+
+        if username:
+            os.environ["MLFLOW_TRACKING_USERNAME"] = username
+        if password:
+            os.environ["MLFLOW_TRACKING_PASSWORD"] = password
+
+        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_experiment(experiment_name)
+
+        # Attach default tags to the experiment object (visible in the
+        # Experiments UI, not just on individual runs).
+        if _default_tags:
+            mlflow.set_experiment_tags(_default_tags)
+
+        if tracing_enabled:
+            # Non-blocking async trace I/O — traces are flushed in a background
+            # thread so agent streaming is not delayed by network round-trips.
+            os.environ.setdefault("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "true")
+
+            # Auto-trace all OpenAI / Agents SDK calls: captures model, tokens,
+            # latency, and full prompt/completion I/O as nested spans in the
+            # MLflow Traces UI.  Works with Runner.run(), Runner.run_streamed(),
+            # and direct openai.Client calls.
+            mlflow.openai.autolog()
+
+        logger.debug(
+            "[mlflow] Tracking configured",
+            extra={
+                "tracking_uri": tracking_uri,
+                "experiment": experiment_name,
+                "auth": "basic" if username else "none",
+                "tracing": tracing_enabled,
+                "default_tags": list(_default_tags.keys()),
+            },
+        )
+    except Exception:
+        _enabled = False
+        _tracing_enabled = False
+        logger.warning("[mlflow] Failed to configure tracking — tracking disabled", exc_info=True)
+
+
+# ── Session run (parent) ──────────────────────────────────────────────────────
+
+
+@contextmanager
+def session_run(
+    run_name: str,
+    tags: dict[str, str] | None = None,
+) -> Generator[None, None, None]:
+    """Context manager that creates a parent MLflow run.
+
+    Use this to group all ``agent_run`` child runs from one patient session
+    under a single collapsible entry in the MLflow Experiments UI.  Each
+    ``agent_run`` opened inside this block automatically detects the active
+    parent and starts as a nested (child) run.
+
+    When tracking is disabled or the server is unreachable, this is a silent
+    no-op — all code inside the block runs normally.
+
+    Args:
+        run_name: Human-readable name for the parent run
+                  (e.g., ``"clinical_session"``).
+        tags: Optional extra tags merged on top of the default tags.
+
+    Example::
+
+        with session_run("clinical_session", tags={"num_concerns": "5"}):
+            for concern in concerns:
+                with agent_run("discussion", {"concern": concern}) as m:
+                    result = await Runner.run(agent, message)
+                    m["output_chars"] = len(result.final_output)
+    """
+    if not _enabled:
+        yield
+        return
+
+    import mlflow  # deferred — only imported when tracking is active
+
+    tracking_active = False
+    merged_tags = {**_default_tags, **(tags or {})}
+    try:
+        mlflow.start_run(run_name=run_name, tags=merged_tags)
+        tracking_active = True
+    except Exception:
+        logger.warning("[mlflow] Could not start session run '%s'", run_name, exc_info=True)
+
+    try:
+        yield
+    finally:
+        if tracking_active:
+            try:
+                mlflow.end_run()
+            except Exception:
+                logger.debug("[mlflow] Could not end session run '%s'", run_name)
+
+
+# ── Agent run (child / standalone) ────────────────────────────────────────────
+
+
+@contextmanager
+def agent_run(
+    run_name: str,
+    params: dict[str, Any],
+    tags: dict[str, str] | None = None,
+) -> Generator[dict[str, float], None, None]:
+    """Context manager for tracking an OpenAI agent invocation with MLflow.
+
+    Logs ``params`` when the run starts and automatically records
+    ``latency_ms`` on exit. The caller may add extra metrics to the yielded
+    ``metrics`` dict before the context exits.
+
+    When an active ``session_run`` is open, this run is started as a *nested*
+    child run so both appear in the parent→child hierarchy in the UI. When
+    used standalone, it starts as a top-level run.
+
+    Default tags (set via ``configure(default_tags=...)``) are merged with
+    call-level ``tags``; call-level tags take precedence on conflict.
+
+    When tracking is disabled or the tracking server is unreachable, this is
+    a silent no-op — the wrapped agent call proceeds normally.
+
+    Args:
+        run_name: Human-readable name for the MLflow run.
+        params: Key/value pairs to log as MLflow parameters.
+        tags: Optional extra tags merged on top of the default tags.
+
+    Yields:
+        A mutable ``metrics`` dict. Add float values to be logged on exit.
+        ``latency_ms`` is set automatically and must not be overwritten.
+
+    Example::
+
+        with agent_run("clinical_chat", {"model": "gpt-4o"}) as metrics:
+            result = await Runner.run(agent, prompt)
+            metrics["output_chars"] = len(result.final_output)
+    """
+    metrics: dict[str, float] = {}
+    start = time.perf_counter()
+
+    if not _enabled:
+        yield metrics
+        return
+
+    import mlflow  # deferred — only imported when tracking is active
+
+    tracking_active = False
+    merged_tags = {**_default_tags, **(tags or {})}
+    try:
+        # Nest under the active session_run when one is open; otherwise start
+        # a standalone top-level run.  mlflow.active_run() uses contextvars
+        # so it is safe across asyncio tasks created inside a session_run block.
+        nested = mlflow.active_run() is not None
+        mlflow.start_run(run_name=run_name, tags=merged_tags, nested=nested)
+        mlflow.log_params({k: str(v)[:250] for k, v in params.items()})
+        tracking_active = True
+    except Exception:
+        logger.warning("[mlflow] Could not start run '%s'", run_name, exc_info=True)
+
+    try:
+        yield metrics
+    finally:
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        metrics.setdefault("latency_ms", duration_ms)
+
+        if tracking_active:
+            try:
+                mlflow.log_metrics(metrics)
+            except Exception:
+                logger.debug("[mlflow] Could not log metrics for run '%s'", run_name)
+            finally:
+                try:
+                    mlflow.end_run()
+                except Exception:
+                    logger.debug("[mlflow] Could not end run '%s'", run_name)
+
+
+# ── Trace span (manual distributed tracing) ───────────────────────────────────
+
+
+@contextmanager
+def trace_span(
+    name: str,
+    attributes: dict[str, Any] | None = None,
+) -> Generator[None, None, None]:
+    """Context manager that creates a named MLflow trace span.
+
+    Use this to create a parent span that groups the auto-logged child spans
+    from ``mlflow.openai.autolog()`` under a descriptive label in the Traces
+    UI.  When tracing is disabled or the server is unreachable, this is a
+    silent no-op.
+
+    Args:
+        name: Span name shown in the MLflow Traces UI
+              (e.g., ``"run_concerns_stream"``).
+        attributes: Optional key/value pairs attached to the span as metadata
+                    (e.g., ``{"concern": "Cardiac", "num_snps": "5"}``).
+
+    Example::
+
+        with trace_span("run_concerns_stream", {"num_messages": len(messages)}):
+            result = Runner.run_streamed(agent, input=messages)
+            async for event in result.stream_events():
+                ...
+    """
+    if not _tracing_enabled:
+        yield
+        return
+
+    import mlflow  # deferred — only imported when tracking is active
+
+    try:
+        with mlflow.start_span(name=name) as span:
+            if attributes:
+                span.set_attributes({k: str(v) for k, v in attributes.items()})
+
+            # Link this trace to the current HTTP request's correlation ID so
+            # all traces from one patient session are grouped as a Session in
+            # the MLflow Observability UI.  The correlation ID is set by
+            # RequestLoggingMiddleware from the x-correlation-id request header
+            # (or generated as a UUID if the header is absent).
+            try:
+                from app.middleware.logging_middleware import get_correlation_id
+
+                session_id = get_correlation_id()
+                if session_id:
+                    mlflow.update_current_trace(session_id=session_id)
+            except Exception:
+                pass  # Non-critical — trace still works without a session ID
+
+            yield
+    except Exception:
+        logger.debug("[mlflow] Could not create trace span '%s'", name)
+        yield
+
+
+# ── Artifact helpers ──────────────────────────────────────────────────────────
+
+
+def log_text(text: str, filename: str) -> None:
+    """Log a plain-text artifact to the active MLflow run.
+
+    Must be called while an active run is open (inside ``agent_run`` or
+    ``session_run``).  Silently skips when tracking is disabled or the call
+    fails for any reason.
+
+    Args:
+        text: The text content to store.
+        filename: Artifact path relative to the run's artifact root
+                  (e.g., ``"discussion_Cardiac.txt"``).
+    """
+    if not _enabled:
+        return
+    try:
+        import mlflow
+
+        mlflow.log_text(text, filename)
+    except Exception:
+        logger.debug("[mlflow] Could not log text artifact '%s'", filename)
+
+
+def log_dict(data: dict[str, Any], filename: str) -> None:
+    """Log a JSON-serialisable dict as an artifact to the active MLflow run.
+
+    Must be called while an active run is open.  Silently skips when tracking
+    is disabled or the call fails for any reason.
+
+    Args:
+        data: JSON-serialisable dict to store.
+        filename: Artifact path relative to the run's artifact root
+                  (e.g., ``"extracted_concerns.json"``).
+    """
+    if not _enabled:
+        return
+    try:
+        import mlflow
+
+        mlflow.log_dict(data, filename)
+    except Exception:
+        logger.debug("[mlflow] Could not log dict artifact '%s'", filename)
+
+
+# ── Token usage ───────────────────────────────────────────────────────────────
+
+
+def log_token_usage(result: Any) -> None:
+    """Extract and log token counts from an OpenAI Agents SDK result object.
+
+    Reads ``result.raw_responses``, sums ``usage.input_tokens`` and
+    ``usage.output_tokens`` across all responses, and logs them as
+    ``input_tokens``, ``output_tokens``, and ``total_tokens`` metrics on the
+    currently active MLflow run.
+
+    For streaming results (``RunResultStreaming``), call this **after** the
+    ``stream_events()`` iterator is exhausted — ``raw_responses`` is only
+    fully populated once all events have been consumed.
+
+    Must be called inside an active run (``agent_run`` or ``session_run``).
+    Silently no-ops when tracking is disabled, when no usage data is found,
+    or on any failure.
+
+    Args:
+        result: A ``RunResult`` or ``RunResultStreaming`` from the OpenAI
+                Agents SDK ``Runner``.
+    """
+    if not _enabled:
+        return
+    try:
+        import mlflow
+
+        raw_responses = getattr(result, "raw_responses", None)
+        if not raw_responses:
+            return
+
+        input_tokens = 0
+        output_tokens = 0
+        for resp in raw_responses:
+            usage = getattr(resp, "usage", None)
+            if usage:
+                input_tokens += getattr(usage, "input_tokens", 0) or 0
+                output_tokens += getattr(usage, "output_tokens", 0) or 0
+
+        total_tokens = input_tokens + output_tokens
+        if total_tokens == 0:
+            return
+
+        mlflow.log_metrics(
+            {
+                "input_tokens": float(input_tokens),
+                "output_tokens": float(output_tokens),
+                "total_tokens": float(total_tokens),
+            }
+        )
+    except Exception:
+        logger.debug("[mlflow] Could not log token usage")
+
+
+# ── Prompt registry ───────────────────────────────────────────────────────────
+
+
+def ensure_prompt(
+    name: str,
+    template: str,
+    commit_message: str = "",
+    tags: dict[str, str] | None = None,
+) -> int | None:
+    """Register a prompt template in the MLflow Prompt Registry.
+
+    Compares ``template`` against the latest registered version. If the text
+    is unchanged, returns the existing version number without creating a new
+    entry.  If the text has changed (i.e. you updated the prompt in code and
+    deployed), a new version is registered automatically — no manual step
+    needed.
+
+    On first call (prompt does not exist yet): creates version 1.
+
+    When tracking is disabled or the registry is unreachable, returns ``None``
+    and the agent falls back to the hardcoded prompt string as normal.
+
+    Args:
+        name: Unique prompt name shown in the MLflow Prompts UI
+              (e.g., ``"lexxi-clinical-discussion"``).
+        template: The full prompt text. Use ``{{variable}}`` placeholders for
+                  dynamic parts (e.g., ``{{available_concerns}}``).
+        commit_message: Optional description of what changed in this version.
+        tags: Optional key/value tags attached to the prompt version in the
+              registry (e.g., ``{"agent": "clinical_discussion", "model": "gpt-4o"}``).
+
+    Returns:
+        Integer version number, or ``None`` if registration failed.
+    """
+    if not _enabled:
+        return None
+    try:
+        import mlflow
+
+        # Check whether the latest registered version matches the current text.
+        # If so, skip registration to avoid creating an identical new version.
+        try:
+            existing = mlflow.load_prompt(f"prompts:/{name}/latest")
+            if existing.template.strip() == template.strip():
+                logger.debug(
+                    "[mlflow] Prompt '%s' unchanged at version %d", name, existing.version
+                )
+                return existing.version
+        except Exception:
+            pass  # Prompt does not exist yet — fall through to register it
+
+        result = mlflow.register_prompt(
+            name=name,
+            template=template,
+            commit_message=commit_message or "Registered from app",
+            tags=tags or {},
+        )
+        logger.debug("[mlflow] Registered prompt '%s' as version %d", name, result.version)
+        return result.version
+    except Exception:
+        logger.debug("[mlflow] Could not register prompt '%s'", name, exc_info=True)
+        return None

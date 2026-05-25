@@ -1,0 +1,74 @@
+##
+## Storage Module - Outputs
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Exports storage infrastructure identifiers and endpoints
+## These outputs enable other modules to access and reference storage resources
+##
+
+##=============================================================================
+## STORAGE ACCOUNT OUTPUTS
+##=============================================================================
+## Primary storage resource identifiers and endpoints
+
+output "storage_account_id" {
+  value       = azurerm_storage_account.sa.id
+  description = "ID of the storage account"
+}
+
+output "storage_account_name" {
+  value       = azurerm_storage_account.sa.name
+  description = "Name of the storage account"
+}
+
+output "storage_account_primary_blob_endpoint" {
+  value       = azurerm_storage_account.sa.primary_blob_endpoint
+  description = "Primary blob endpoint"
+}
+
+output "storage_account_primary_access_key" {
+  value       = azurerm_storage_account.sa.primary_access_key
+  sensitive   = true
+  description = "Primary access key of the storage account"
+}
+
+output "storage_container_backup_id" {
+  value       = azurerm_storage_container.backup.id
+  description = "ID of the backup storage container"
+}
+
+output "storage_container_logs_id" {
+  value       = azurerm_storage_container.logs.id
+  description = "ID of the logs storage container"
+}
+
+##=============================================================================
+## KEY VAULT OUTPUTS
+##=============================================================================
+## Key Vault resource identifiers for secret management
+
+output "key_vault_id" {
+  value       = azurerm_key_vault.kv.id
+  description = "ID of the Key Vault"
+}
+
+output "key_vault_uri" {
+  value       = azurerm_key_vault.kv.vault_uri
+  description = "URI of the Key Vault"
+}
+
+##=============================================================================
+## LOG ANALYTICS OUTPUTS
+##=============================================================================
+## Log Analytics workspace for centralized monitoring and logging
+
+output "log_analytics_workspace_id" {
+  value       = azurerm_log_analytics_workspace.law.id
+  description = "ID of the Log Analytics Workspace"
+}
+
+output "log_analytics_workspace_key" {
+  value       = azurerm_log_analytics_workspace.law.primary_shared_key
+  sensitive   = true
+  description = "Primary shared key for Log Analytics Workspace"
+}

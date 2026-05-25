@@ -1,0 +1,99 @@
+"""Data service module for managing patient and genomic data operations."""
+
+from logging import getLogger
+
+from ..core.exceptions import NotFoundError
+from ..models.data_models import ConcernsResponse, Patient, PatientResults
+from ..models.pagination_models import PaginatedResponse
+from ..repository import ConcernsRepository, DataRepository
+from ..utils.pagination import PaginationUtils
+
+logger = getLogger(__name__)
+
+
+class DataService:
+    """Service class for handling patient data and genomic information.
+
+    This service provides methods to retrieve patient information,
+    genomic results, and concerns data from the repository.
+    """
+
+    async def get_patients(
+        self,
+        search: str | None = None,
+        page: int = 1,
+        per_page: int = 10,
+        sort_order: str = "asc",
+    ):
+        """Retrieve a paginated list of patients.
+
+        Args:
+            search: Optional text to filter patients by name.
+            page: Page number (1-indexed).
+            per_page: Number of results per page.
+            sort_order: Sort direction, either "asc" or "desc".
+
+        Returns:
+            PaginatedResponse[Patient]: Paginated list of patients with metadata.
+        """
+        results, total_count = await DataRepository.get_patients(
+            search=search,
+            page=page,
+            per_page=per_page,
+            sort_order=sort_order,
+        )
+
+        patient_responses = [Patient(**result) for result in results]
+        pagination_meta = PaginationUtils.create_pagination_meta(
+            page=page, per_page=per_page, total=total_count
+        )
+
+        return PaginatedResponse[Patient](data=patient_responses, meta=pagination_meta)
+
+    async def get_patient_results(self, patient_id: int):
+        """Retrieve the genomic/lab results for a specific patient.
+
+        Args:
+            patient_id: The unique identifier of the patient.
+
+        Returns:
+            PatientResults: The patient's results data.
+
+        Raises:
+            NotFoundError: If no results are found for the given patient ID.
+        """
+        result = await DataRepository.get_patient_results(patient_id=patient_id)
+        if not result:
+            raise NotFoundError("Patient results not found")
+
+        return PatientResults(**result)
+
+    async def get_patient(self, patient_id: int):
+        """Retrieve detailed information for a specific patient.
+
+        Args:
+            patient_id: The unique identifier of the patient.
+
+        Returns:
+            Patient: The patient's detailed information.
+
+        Raises:
+            NotFoundError: If no patient is found for the given ID.
+        """
+        result = await DataRepository.get_patient(patient_id=patient_id)
+        if not result:
+            raise NotFoundError("Patient not found")
+
+        return Patient(**result)
+
+    async def get_concerns(self):
+        """Retrieve the full list of available health concerns.
+
+        Queries the tags collection for documents where ``is_concern`` is True.
+
+        Returns:
+            ConcernsResponse: List of all available concerns with their IDs and names.
+        """
+        concerns = await ConcernsRepository.get_concerns()
+
+        return ConcernsResponse(concerns=concerns)

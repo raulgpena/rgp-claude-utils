@@ -1,0 +1,47 @@
+{
+  "id": "a1000001-0000-0000-0000-000000000001",
+  "name": "GET /v1/patients - list all",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/patients"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "data": [
+        {
+          "patientId": "pt-001",
+          "displayName": "Patient-Alpha",
+          "sexAtBirth": "female",
+          "yearOfBirth": 1975,
+          "hasGenomicReport": true,
+          "reportStatus": "completed"
+        },
+        {
+          "patientId": "pt-002",
+          "displayName": "Patient-Beta",
+          "sexAtBirth": "male",
+          "yearOfBirth": 1982,
+          "hasGenomicReport": true,
+          "reportStatus": "completed"
+        },
+        {
+          "patientId": "pt-003",
+          "displayName": "Patient-Gamma",
+          "sexAtBirth": "female",
+          "yearOfBirth": 1968,
+          "hasGenomicReport": true,
+          "reportStatus": "processing"
+        }
+      ],
+      "pagination": {
+        "total": 3,
+        "limit": 20,
+        "offset": 0,
+        "hasNext": false
+      }
+    }
+  },
+  "priority": 1
+}

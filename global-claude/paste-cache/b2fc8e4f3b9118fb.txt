@@ -1,0 +1,14 @@
+2026-04-27T21:55:19.2140596Z stdout F 2026/04/27 21:55:19 INFO:     100.100.0.67:57832 - "GET / HTTP/1.1" 401 Unauthorized
+2026-04-27T21:55:20.9463407Z stdout F 2026/04/27 21:55:20 INFO:     100.100.0.67:57846 - "GET / HTTP/1.1" 304 Not Modified
+2026-04-27T21:55:21.5647314Z stdout F 2026/04/27 21:55:21 INFO:     100.100.0.67:57846 - "GET /ajax-api/3.0/mlflow/server-info HTTP/1.1" 200 OK
+2026-04-27T21:55:21.7063920Z stdout F 2026/04/27 21:55:21 INFO:     100.100.0.67:57848 - "GET /ajax-api/3.0/mlflow/ui-telemetry HTTP/1.1" 200 OK
+2026-04-27T21:55:21.8590511Z stderr F 2026/04/27 21:55:21 WARNING mlflow.server.fastapi_security: Blocked cross-origin request from https://api-dev.ixxdna.com
+2026-04-27T21:55:21.8600777Z stdout F 2026/04/27 21:55:21 INFO:     100.100.0.67:57848 - "POST /ajax-api/2.0/mlflow/runs/search HTTP/1.1" 403 Forbidden
+2026-04-27T21:55:21.9770213Z stdout F 2026/04/27 21:55:21 INFO:     100.100.0.67:57852 - "POST /ajax-api/2.0/mlflow/experiments/search-datasets HTTP/1.1" 403 Forbidden
+2026-04-27T21:55:21.9771761Z stderr F 2026/04/27 21:55:21 WARNING mlflow.server.fastapi_security: Blocked cross-origin request from https://api-dev.ixxdna.com
+2026-04-27T21:55:22.0723921Z stdout F 2026/04/27 21:55:22 INFO:     100.100.0.196:50850 - "GET /ajax-api/3.0/mlflow/assistant/config HTTP/1.1" 403 Forbidden
+2026-04-27T21:55:22.4928786Z stdout F 2026/04/27 21:55:22 INFO:     100.100.0.196:50856 - "GET /ajax-api/2.0/mlflow/experiments/get?experiment_id=1 HTTP/1.1" 200 OK
+2026-04-27T21:55:22.7699435Z stderr F 2026/04/27 21:55:22 WARNING mlflow.server.fastapi_security: Blocked cross-origin request from https://api-dev.ixxdna.com
+2026-04-27T21:55:22.7702072Z stdout F 2026/04/27 21:55:22 INFO:     100.100.0.196:50850 - "POST /ajax-api/2.0/mlflow/logged-models/search HTTP/1.1" 403 Forbidden
+2026-04-27T21:55:22.8017570Z stdout F 2026/04/27 21:55:22 INFO:     100.100.0.67:57846 - "POST /graphql HTTP/1.1" 200 OK
+2026-04-27T21:55:23.0129322Z stdout F 2026/04/27 21:55:23 INFO:     100.100.0.196:50856 - "GET /ajax-api/2.0/mlflow/gateway-proxy?gateway_path=api%2F2.0%2Fendpoints%2F HTTP/1.1" 200 OK

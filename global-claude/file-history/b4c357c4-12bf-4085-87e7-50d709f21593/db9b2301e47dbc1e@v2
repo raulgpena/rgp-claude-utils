@@ -1,0 +1,87 @@
+[
+  {
+    "input": "Patient has high blood pressure and is always tired",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Patient has high blood pressure and is always tired. She is 48 years old."
+      }
+    ],
+    "available_concerns": [
+      "Cardiac", "Hypertension", "Fatigue", "Diabetes Type 2", "Cancer Prevention",
+      "ADHD", "Attention and Focus", "Anxiety", "Depression", "Sleep",
+      "Thyroid", "Obesity / Weight Management", "Inflammation", "Detoxification",
+      "Hormones", "Bone Health", "Immune Function", "Cognitive Function",
+      "Methylation", "Vitamin D Metabolism"
+    ],
+    "expected_concerns": "Hypertension, Fatigue"
+  },
+  {
+    "input": "Mother had breast cancer, father had heart disease, patient worried about prevention",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My patient is a 42-year-old woman. Her mother had breast cancer at age 55 and her father had a heart attack at 60. She wants to understand her risks and focus on prevention."
+      }
+    ],
+    "available_concerns": [
+      "Cardiac", "Hypertension", "Fatigue", "Diabetes Type 2", "Cancer Prevention",
+      "ADHD", "Attention and Focus", "Anxiety", "Depression", "Sleep",
+      "Thyroid", "Obesity / Weight Management", "Inflammation", "Detoxification",
+      "Hormones", "Bone Health", "Immune Function", "Cognitive Function",
+      "Methylation", "Vitamin D Metabolism"
+    ],
+    "expected_concerns": "Cancer Prevention, Cardiac"
+  },
+  {
+    "input": "Type 2 diabetes and elevated cholesterol",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Patient was diagnosed with type 2 diabetes 2 years ago and recent labs show elevated LDL cholesterol of 180 mg/dL. He is 55 years old and overweight."
+      }
+    ],
+    "available_concerns": [
+      "Cardiac", "Hypertension", "Fatigue", "Diabetes Type 2", "Cancer Prevention",
+      "ADHD", "Attention and Focus", "Anxiety", "Depression", "Sleep",
+      "Thyroid", "Obesity / Weight Management", "Inflammation", "Detoxification",
+      "Hormones", "Bone Health", "Immune Function", "Cognitive Function",
+      "Methylation", "Vitamin D Metabolism"
+    ],
+    "expected_concerns": "Diabetes Type 2, Cardiac, Obesity / Weight Management"
+  },
+  {
+    "input": "Child has trouble focusing in school, suspected ADHD",
+    "messages": [
+      {
+        "role": "user",
+        "content": "10-year-old patient with significant difficulty focusing in school. Teacher reports he is easily distracted and impulsive. Parents suspect ADHD. Also has trouble sleeping at night."
+      }
+    ],
+    "available_concerns": [
+      "Cardiac", "Hypertension", "Fatigue", "Diabetes Type 2", "Cancer Prevention",
+      "ADHD", "Attention and Focus", "Anxiety", "Depression", "Sleep",
+      "Thyroid", "Obesity / Weight Management", "Inflammation", "Detoxification",
+      "Hormones", "Bone Health", "Immune Function", "Cognitive Function",
+      "Methylation", "Vitamin D Metabolism"
+    ],
+    "expected_concerns": "ADHD, Attention and Focus, Sleep"
+  },
+  {
+    "input": "Anxiety, depression, and difficulty sleeping",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Patient presents with chronic anxiety and mild depression. She reports difficulty falling asleep and waking up frequently at night. She also mentions frequent headaches and low energy."
+      }
+    ],
+    "available_concerns": [
+      "Cardiac", "Hypertension", "Fatigue", "Diabetes Type 2", "Cancer Prevention",
+      "ADHD", "Attention and Focus", "Anxiety", "Depression", "Sleep",
+      "Thyroid", "Obesity / Weight Management", "Inflammation", "Detoxification",
+      "Hormones", "Bone Health", "Immune Function", "Cognitive Function",
+      "Methylation", "Vitamin D Metabolism"
+    ],
+    "expected_concerns": "Anxiety, Depression, Sleep, Fatigue"
+  }
+]

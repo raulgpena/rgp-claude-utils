@@ -1,0 +1,63 @@
+Terraform will perform the following actions:
+
+  # module.storage.azurerm_key_vault.kv will be updated in-place
+  ~ resource "azurerm_key_vault" "kv" {
+      ~ access_policy                   = [
+            {
+                application_id          = null
+                certificate_permissions = []
+                key_permissions         = []
+                object_id               = "fcbd76ac-1ca7-4e55-acfe-8ef79579e77d"
+                secret_permissions      = [
+                    "Backup",
+                    "Delete",
+                    "Get",
+                    "List",
+                    "Purge",
+                    "Recover",
+                    "Restore",
+                    "Set",
+                ]
+                storage_permissions     = []
+                tenant_id               = "f0e17136-83a4-43db-a059-24c4fe1cf1f8"
+            },
+          - {
+              - certificate_permissions = []
+              - key_permissions         = []
+              - object_id               = "1893a0ed-41b2-4105-806a-830d67b75f96"
+              - secret_permissions      = [
+                  - "Get",
+                  - "List",
+                ]
+              - storage_permissions     = []
+              - tenant_id               = "f0e17136-83a4-43db-a059-24c4fe1cf1f8"
+                # (1 unchanged attribute hidden)
+            },
+          - {
+              - certificate_permissions = []
+              - key_permissions         = []
+              - object_id               = "fd9c38f2-4465-4b33-9977-95af37307b17"
+              - secret_permissions      = [
+                  - "Get",
+                  - "List",
+                ]
+              - storage_permissions     = []
+              - tenant_id               = "f0e17136-83a4-43db-a059-24c4fe1cf1f8"
+                # (1 unchanged attribute hidden)
+            },
+        ]
+        id                              = "/subscriptions/acfc3ea5-6766-4446-9c35-eab2cf526325/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.KeyVault/vaults/ixdna-vault-dev-kv"
+        name                            = "ixdna-vault-dev-kv"
+        tags                            = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (12 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.

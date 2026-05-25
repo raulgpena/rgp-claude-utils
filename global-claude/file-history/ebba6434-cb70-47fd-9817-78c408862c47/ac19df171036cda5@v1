@@ -1,0 +1,76 @@
+##
+## Dev Environment - Terraform Configuration
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Configures Terraform version requirements, providers, and remote state
+##
+
+##=============================================================================
+## TERRAFORM VERSION & REQUIRED PROVIDERS
+##=============================================================================
+## Ensures consistent Terraform behavior across all deployments
+## Required versions:
+## - Terraform: >= 1.5.0 (ensures latest features and fixes)
+## - Azure Provider: ~> 3.80 (stable releases, auto-updates patch versions)
+##
+
+terraform {
+
+  required_version = ">= 1.5.0"
+
+  required_providers {
+
+    # Azure Resource Manager provider for managing Azure resources
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.80"
+    }
+  }
+
+  ##=========================================================================
+  ## REMOTE STATE CONFIGURATION
+  ##=========================================================================
+  ## Stores Terraform state in Azure Storage for centralized management
+  ## State location: Azure Storage Account (tfstate08161)
+  ## State path: dev/terraform.tfstate
+  ##
+  ## Benefits:
+  ## - Team collaboration (shared state)
+  ## - State locking (prevents concurrent modifications)
+  ## - State versioning and backup
+  ## - Integration with CI/CD pipelines
+  ##
+  ## Warning: State contains sensitive data - restrict access to storage account
+  ##
+
+  backend "azurerm" {
+    resource_group_name  = "rg-intellxxdna-lexxi-state"
+    storage_account_name = "tfstate29066"
+    container_name       = "terraform-state"
+    key                  = "dev/terraform.tfstate"
+  }
+}
+
+
+##=============================================================================
+## AZURE PROVIDER CONFIGURATION
+##=============================================================================
+## Configures Azure authentication and default behavior
+## Features:
+## - Prevent accidental deletion of resource groups with resources
+## - Skip provider registration (assumes pre-configured)
+##
+## Authentication:
+## - Uses Azure CLI credentials (az login)
+## - Or environment variables (ARM_CLIENT_ID, ARM_CLIENT_SECRET, etc.)
+## - Or managed identity (when running in Azure)
+##
+
+provider "azurerm" {
+
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+  }
+}

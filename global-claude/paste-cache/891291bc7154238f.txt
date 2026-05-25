@@ -1,0 +1,22 @@
+{"TimeStamp": "2026-04-27T18:32:18.47218", "Log": "Connecting to the container 'mlflow'..."}
+{"TimeStamp": "2026-04-27T18:32:18.52284", "Log": "Successfully Connected to container: 'mlflow' [Revision: 'intellxxdna-lexxi-dev-mlflow--0000010', Replica: 'intellxxdna-lexxi-dev-mlflow--0000010-85f8887b47-d276l']"}
+{"TimeStamp": "2026-04-27T18:28:53.899344+00:00", "Log": "F 2026/04/27 18:28:53 INFO:     Application startup complete."}
+{"TimeStamp": "2026-04-27T18:28:56.6166179+00:00", "Log": "F 2026/04/27 18:28:56 INFO:     100.100.0.196:42330 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:09.5530409+00:00", "Log": "F 2026/04/27 18:29:09 INFO:     100.100.0.67:42460 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:22.9163701+00:00", "Log": "F 2026/04/27 18:29:22 INFO:     100.100.0.196:41628 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:23.8395707+00:00", "Log": "F 2026/04/27 18:29:23 INFO:     100.100.0.67:39474 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:24.9315675+00:00", "Log": "F 2026/04/27 18:29:24 INFO:     100.100.0.196:41640 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:26.2943678+00:00", "Log": "F 2026/04/27 18:29:26 INFO:     100.100.0.67:56472 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:28.6090778+00:00", "Log": "F 2026/04/27 18:29:28 INFO:     100.100.0.196:33602 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:54.6014798+00:00", "Log": "F 2026/04/27 18:29:54 INFO:     100.100.0.67:41350 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:56.1022022+00:00", "Log": "F 2026/04/27 18:29:56 INFO:     100.100.0.196:33176 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:29:57.2346221+00:00", "Log": "F 2026/04/27 18:29:57 INFO:     100.100.0.196:33178 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:15.8057823+00:00", "Log": "F 2026/04/27 18:30:15 INFO:     100.100.0.67:48198 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:24.2046026+00:00", "Log": "F 2026/04/27 18:30:24 INFO:     100.100.0.67:48208 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:41.6534786+00:00", "Log": "F 2026/04/27 18:30:41 INFO:     100.100.0.196:58898 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:42.0169691+00:00", "Log": "F 2026/04/27 18:30:42 INFO:     100.100.0.196:58898 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:42.822123+00:00", "Log": "F 2026/04/27 18:30:42 INFO:     100.100.0.196:58898 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:30:43.4302251+00:00", "Log": "F 2026/04/27 18:30:43 INFO:     100.100.0.67:49384 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:31:40.2273527+00:00", "Log": "F 2026/04/27 18:31:40 INFO:     100.100.0.67:50948 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:32:11.9571597+00:00", "Log": "F 2026/04/27 18:32:11 INFO:     100.100.0.196:35894 - \"GET / HTTP/1.1\" 401 Unauthorized"}
+{"TimeStamp": "2026-04-27T18:32:14.0243804+00:00", "Log": "F 2026/04/27 18:32:14 INFO:     100.100.0.196:35904 - \"GET / HTTP/1.1\" 401 Unauthorized"}

@@ -1,0 +1,32 @@
+{
+  "id": "a1000008-0000-0000-0000-000000000001",
+  "name": "GET /v1/patients/pt-003/reports",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/patients/pt-003/reports"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "data": [
+        {
+          "reportId": "rpt-003",
+          "reportVersion": "1",
+          "panelId": "COMPREHENSIVE-V3",
+          "panelType": "COMPREHENSIVE",
+          "completedAt": null,
+          "status": "processing",
+          "lexxiEligible": false
+        }
+      ],
+      "pagination": {
+        "total": 1,
+        "limit": 20,
+        "offset": 0,
+        "hasNext": false
+      }
+    }
+  },
+  "priority": 1
+}

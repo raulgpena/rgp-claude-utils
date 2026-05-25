@@ -1,0 +1,22 @@
+{
+  "id": "a1000004-0000-0000-0000-000000000001",
+  "name": "GET /v1/patients/pt-003",
+  "request": {
+    "method": "GET",
+    "urlPathEqualTo": "/v1/patients/pt-003"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "patientId": "pt-003",
+      "displayName": "Patient-Gamma",
+      "sexAtBirth": "female",
+      "yearOfBirth": 1968,
+      "dateOfBirth": null,
+      "adopted": false,
+      "familyHistoryAvailable": null
+    }
+  },
+  "priority": 1
+}

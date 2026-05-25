@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "Scaffold cache adapter + config",
+  "description": "PersonCacheAdapter with Redis cache-aside (ADR-002), RedisConfig with Jackson serializer, DomainConfig registering PersonDomainService as @Bean",
+  "activeForm": "Writing cache adapter and config",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,494 @@
+"""Reference data cache for the Lexxi AI/Rules Engine pipeline.
+
+Caches all R&D Tool reference data (tags, SNPs, interventions, studies,
+SNP interactions) in memory.  Reconstructs the nested document shapes
+that the pipeline classes expect from the normalized PostgreSQL tables.
+
+Provides a lock-protected reload mechanism so in-flight requests continue
+serving the previous complete snapshot while a reload is in progress.
+"""
+
+import asyncio
+import logging
+
+from sqlalchemy import select
+
+from app.db import PostgresDatabase
+from app.entities.interventions.intervention import Intervention
+from app.entities.interventions.intervention_snp_assoc_studie import (
+    InterventionSnpAssocStudy,
+)
+from app.entities.interventions.intervention_snp_association import (
+    InterventionSnpAssociation,
+)
+from app.entities.snp.fact.snp_fact import SnpFact
+from app.entities.snp.fact.snp_fact_odds_ratios import SnpFactOddsRatio
+from app.entities.snp.fact.snp_fact_studies import SnpFactStudy
+from app.entities.snp.fact.snp_fact_tags import SnpFactTag
+from app.entities.snp.interaction.interaction import SnpInteraction
+from app.entities.snp.interaction.interaction_odds_ratio import InteractionOddsRatio
+from app.entities.snp.interaction.interaction_snp import InteractionSnp
+from app.entities.snp.interaction.interaction_tag import InteractionTag
+from app.entities.snp.snp import SNP
+from app.entities.snp.snp_intervention_tier import SnpInterventionTier
+from app.entities.snp_detail import SnpDetail
+from app.entities.study import Study
+from app.entities.tag import Tag
+from app.entities.tags_association import TagsAssociation
+
+logger = logging.getLogger(__name__)
+
+_NOT_LOADED = "Cache not loaded. Call ensure_loaded() first."
+
+
+def _row_to_dict(row) -> dict:
+    """Convert an ORM entity to a plain dict, adding ``_id`` from the PK."""
+    data = {c.key: getattr(row, c.key) for c in row.__table__.columns}
+    data["_id"] = str(data.pop("id"))
+    return data
+
+
+def _str_id(val) -> str:
+    """Coerce a UUID (or any value) to a plain string for lookups."""
+    return str(val) if val is not None else ""
+
+
+class ReferenceDataCache:
+    """In-memory cache of R&D Tool reference data.
+
+    Loaded once at startup via ensure_loaded(). Can be fully reloaded at any
+    time via reload() without serving partially-loaded state to callers.
+
+    All nested document shapes (facts inside SNPs, associated_tags inside
+    tags, snp_associations inside interventions, etc.) are reconstructed
+    from the normalized PostgreSQL tables so the pipeline classes can
+    consume them without changes.
+    """
+
+    def __init__(self, db: PostgresDatabase):
+        """Initialize with a PostgreSQL connection."""
+        self._db = db
+        self._reload_lock = asyncio.Lock()
+
+        self._all_tags: list[dict] | None = None
+        self._tag_by_name: dict[str, dict] | None = None
+        self._tag_by_id: dict[str, dict] | None = None
+        self._all_snps: list[dict] | None = None
+        self._snp_details: dict[int, dict] | None = None
+        self._snp_interactions: dict | None = None
+        self._all_interventions: list[dict] | None = None
+        self._intervention_by_id: dict[str, dict] | None = None
+        self._all_studies: list[dict] | None = None
+        self._study_by_id: dict[str, dict] | None = None
+
+    # ── Load / Reload ───────────────────────────────────────────────
+
+    async def ensure_loaded(self):
+        """Pre-load all reference data. Safe to call multiple times (idempotent).
+
+        Uses two-phase parallel loading: studies+tags first (needed by
+        downstream loaders), then everything else concurrently.
+        """
+        # Phase 1: studies + tags are independent and needed by phase 2
+        await asyncio.gather(
+            self._ensure_studies_loaded(),
+            self._ensure_tags_loaded(),
+        )
+        # Phase 2: remaining loaders (snps needs tag_by_id from phase 1)
+        await asyncio.gather(
+            self._ensure_snps_loaded(),
+            self._ensure_snp_details_loaded(),
+            self._ensure_snp_interactions_loaded(),
+            self._ensure_interventions_loaded(),
+        )
+
+    async def reload(self):
+        """Force a full reload from PostgreSQL.
+
+        Holds a lock while resetting and re-fetching so callers never see
+        partially-loaded data — they keep reading the old snapshot until
+        the new one is fully ready.
+        """
+        async with self._reload_lock:
+            self._all_tags = None
+            self._tag_by_name = None
+            self._tag_by_id = None
+            self._all_snps = None
+            self._snp_details = None
+            self._snp_interactions = None
+            self._all_interventions = None
+            self._intervention_by_id = None
+            self._all_studies = None
+            self._study_by_id = None
+            await self.ensure_loaded()
+
+    # ── Private loaders ─────────────────────────────────────────────
+
+    async def _ensure_studies_loaded(self):
+        if self._all_studies is not None:
+            return
+        query = select(Study).where(Study.is_deleted == False)  # noqa: E712
+        rows = await self._db.fetch_all(query) or []
+        self._all_studies = [_row_to_dict(r) for r in rows]
+        self._study_by_id = {doc["_id"]: doc for doc in self._all_studies}
+        logger.info("[cache] Loaded %d studies", len(self._all_studies))
+
+    async def _ensure_tags_loaded(self):
+        if self._all_tags is not None:
+            return
+
+        # Parallel: fetch tags + associations concurrently
+        rows, assoc_rows = await asyncio.gather(
+            self._db.fetch_all(select(Tag).where(Tag.is_deleted == False)),  # noqa: E712
+            self._db.fetch_all(select(TagsAssociation)),
+        )
+        rows = rows or []
+        assoc_rows = assoc_rows or []
+        tags = [_row_to_dict(r) for r in rows]
+
+        # Group associations by source tag_id
+        assocs_by_tag: dict[str, list[dict]] = {}
+        for ar in assoc_rows:
+            tid = _str_id(ar.tag_id)
+            assocs_by_tag.setdefault(tid, []).append(
+                {
+                    "tag_id": _str_id(ar.associated_tag_id),
+                }
+            )
+
+        # 3. Attach associated_tags to each tag dict
+        for tag in tags:
+            tag["associated_tags"] = assocs_by_tag.get(tag["_id"], [])
+
+        self._all_tags = tags
+        self._tag_by_name = {t["name"]: t for t in self._all_tags}
+        self._tag_by_id = {t["_id"]: t for t in self._all_tags}
+        logger.info("[cache] Loaded %d tags", len(self._all_tags))
+
+    async def _ensure_snps_loaded(self):
+        if self._all_snps is not None:
+            return
+
+        # Fire all 7 independent queries in parallel
+        rows, fact_rows, ft_rows, or_rows, fs_rows, tier_rows, isnp_rows = await asyncio.gather(
+            self._db.fetch_all(select(SNP).where(SNP.is_deleted == False)),  # noqa: E712
+            self._db.fetch_all(select(SnpFact).where(SnpFact.is_deleted == False)),  # noqa: E712
+            self._db.fetch_all(select(SnpFactTag)),
+            self._db.fetch_all(select(SnpFactOddsRatio)),
+            self._db.fetch_all(select(SnpFactStudy)),
+            self._db.fetch_all(select(SnpInterventionTier)),
+            self._db.fetch_all(select(InteractionSnp)),
+        )
+        rows = rows or []
+        fact_rows = fact_rows or []
+        ft_rows = ft_rows or []
+        or_rows = or_rows or []
+        fs_rows = fs_rows or []
+        tier_rows = tier_rows or []
+        isnp_rows = isnp_rows or []
+
+        snps = [_row_to_dict(r) for r in rows]
+
+        # Build fact index
+        facts_by_snp: dict[str, list[dict]] = {}
+        fact_id_to_dict: dict[str, dict] = {}
+        for fr in fact_rows:
+            fd = _row_to_dict(fr)
+            fact_id_to_dict[fd["_id"]] = fd
+            fd["tags"] = []
+            fd["odds_ratios"] = []
+            fd["sources"] = []
+            sid = _str_id(fr.snp_id)
+            facts_by_snp.setdefault(sid, []).append(fd)
+
+        # Populate fact.tags[]
+        for ft in ft_rows:
+            fid = _str_id(ft.snp_fact_id)
+            if fid in fact_id_to_dict:
+                fact_id_to_dict[fid]["tags"].append(_str_id(ft.tag_id))
+
+        # Populate fact.odds_ratios[]
+        for orr in or_rows:
+            fid = _str_id(orr.snp_fact_id)
+            if fid in fact_id_to_dict:
+                fact_id_to_dict[fid]["odds_ratios"].append(
+                    {
+                        "_id": _str_id(orr.id),
+                        "value": orr.value,
+                        "genotype": list(orr.genotype or []),
+                        "description": orr.description,
+                        "extracted_ai": orr.extracted_ai,
+                    }
+                )
+
+        # Populate fact.sources[]
+        for fs in fs_rows:
+            fid = _str_id(fs.snp_fact_id)
+            if fid in fact_id_to_dict:
+                fact_id_to_dict[fid]["sources"].append(_str_id(fs.study_id))
+
+        # Build tiers index: snp_id → tag_id → list of tier entries
+        tiers_by_snp_tag: dict[str, dict[str, list[dict]]] = {}
+        for tr in tier_rows:
+            sid = _str_id(tr.snp_id)
+            tid = _str_id(tr.tag_id)
+            tiers_by_snp_tag.setdefault(sid, {}).setdefault(tid, []).append(
+                {
+                    "intervention_id": _str_id(tr.intervention_id),
+                    "snp_association_id": _str_id(tr.intervention_snp_association_id),
+                    "tier": tr.tier,
+                    "tier_level_index": tr.tier_level_index,
+                }
+            )
+
+        # Build snp_id → [interaction_id] reverse map
+        interactions_by_snp: dict[str, list[str]] = {}
+        for isnp in isnp_rows:
+            sid = _str_id(isnp.snp_id)
+            interactions_by_snp.setdefault(sid, []).append(_str_id(isnp.interaction_id))
+
+        # Derive unique_tags per SNP from fact tags
+        tag_by_id = self._tag_by_id or {}
+
+        # Assemble everything onto each SNP dict
+        for snp in snps:
+            snp_id = snp["_id"]
+
+            # facts
+            snp["facts"] = facts_by_snp.get(snp_id, [])
+
+            # unique_tags — derive from fact tag names (deduplicated)
+            tag_name_set: set[str] = set()
+            for fact in snp["facts"]:
+                for tid in fact.get("tags", []):
+                    tname = tag_by_id.get(tid, {}).get("name")
+                    if tname:
+                        tag_name_set.add(tname)
+            snp["unique_tags"] = sorted(tag_name_set)
+
+            # tier_information_by_tag
+            snp_tiers = tiers_by_snp_tag.get(snp_id, {})
+            snp["tier_information_by_tag"] = [
+                {
+                    "tag_id": tid,
+                    "interventions_tier_information": entries,
+                }
+                for tid, entries in snp_tiers.items()
+            ]
+
+            # snp_interactions (list of interaction IDs)
+            snp["snp_interactions"] = interactions_by_snp.get(snp_id, [])
+
+        self._all_snps = snps
+        logger.info(
+            "[cache] Loaded %d SNPs with %d facts, %d tier entries",
+            len(snps),
+            len(fact_rows),
+            len(tier_rows),
+        )
+
+    async def _ensure_snp_details_loaded(self):
+        if self._snp_details is not None:
+            return
+        query = select(SnpDetail)
+        rows = await self._db.fetch_all(query) or []
+        details: dict[int, dict] = {}
+        for row in rows:
+            data = row.data or {}
+            gene_id = data.get("gene_id")
+            if gene_id is not None:
+                details[gene_id] = {
+                    "allele_freqs": data.get("allele_freqs", {}),
+                }
+        self._snp_details = details
+        logger.info("[cache] Loaded %d snp_details", len(self._snp_details))
+
+    async def _ensure_snp_interactions_loaded(self):
+        if self._snp_interactions is not None:
+            return
+
+        # Fire all 4 queries in parallel (added InteractionOddsRatio)
+        rows, isnp_rows, itag_rows, ior_rows = await asyncio.gather(
+            self._db.fetch_all(
+                select(SnpInteraction).where(SnpInteraction.is_deleted == False)  # noqa: E712
+            ),
+            self._db.fetch_all(select(InteractionSnp)),
+            self._db.fetch_all(select(InteractionTag)),
+            self._db.fetch_all(select(InteractionOddsRatio)),
+        )
+        rows = rows or []
+        isnp_rows = isnp_rows or []
+        itag_rows = itag_rows or []
+        ior_rows = ior_rows or []
+
+        docs = [_row_to_dict(r) for r in rows]
+        doc_by_id: dict[str, dict] = {d["_id"]: d for d in docs}
+
+        # Reconstruct snps[] on each interaction
+        isnps_by_interaction: dict[str, list[dict]] = {}
+        for isnp in isnp_rows:
+            iid = _str_id(isnp.interaction_id)
+            isnps_by_interaction.setdefault(iid, []).append(
+                {
+                    "snp_id": _str_id(isnp.snp_id),
+                    "genotype_effect": isnp.genotype_effect or [],
+                }
+            )
+
+        # Reconstruct tags[] on each interaction
+        itags_by_interaction: dict[str, list[str]] = {}
+        for it in itag_rows:
+            iid = _str_id(it.interaction_id)
+            itags_by_interaction.setdefault(iid, []).append(_str_id(it.tag_id))
+
+        # Reconstruct odds_ratios[] on each interaction
+        iors_by_interaction: dict[str, list[dict]] = {}
+        for ior in ior_rows:
+            iid = _str_id(ior.interaction_id)
+            iors_by_interaction.setdefault(iid, []).append(
+                {
+                    "_id": _str_id(ior.id),
+                    "value": ior.value,
+                    "description": ior.description or "",
+                }
+            )
+
+        # Attach to each interaction doc
+        for doc in docs:
+            did = doc["_id"]
+            doc["snps"] = isnps_by_interaction.get(did, [])
+            doc["tags"] = itags_by_interaction.get(did, [])
+            doc["odds_ratios"] = iors_by_interaction.get(did, [])
+
+        self._snp_interactions = doc_by_id
+        logger.info(
+            "[cache] Loaded %d snp_interactions with %d odds_ratios",
+            len(docs),
+            len(ior_rows),
+        )
+
+    async def _ensure_interventions_loaded(self):
+        if self._all_interventions is not None:
+            return
+
+        # Fire all 3 queries in parallel
+        rows, isa_rows, isas_rows = await asyncio.gather(
+            self._db.fetch_all(
+                select(Intervention).where(Intervention.is_deleted == False)  # noqa: E712
+            ),
+            self._db.fetch_all(select(InterventionSnpAssociation)),
+            self._db.fetch_all(select(InterventionSnpAssocStudy)),
+        )
+        rows = rows or []
+        isa_rows = isa_rows or []
+        isas_rows = isas_rows or []
+
+        interventions = [_row_to_dict(r) for r in rows]
+        intervention_by_id: dict[str, dict] = {d["_id"]: d for d in interventions}
+
+        # Build snp_associations per intervention
+        assocs_by_intervention: dict[str, list[dict]] = {}
+        assoc_id_to_dict: dict[str, dict] = {}
+        for isa in isa_rows:
+            ad = {
+                "_id": _str_id(isa.id),
+                "snp_id": _str_id(isa.snp_id),
+                "tag": _str_id(isa.tag_id),
+                "description": isa.description or "",
+                "override_dosage": isa.override_dosage or {},
+                "sources": [],
+                "index": isa.display_index or 0,
+            }
+            assoc_id_to_dict[ad["_id"]] = ad
+            iid = _str_id(isa.intervention_id)
+            assocs_by_intervention.setdefault(iid, []).append(ad)
+
+        # Populate sources[]
+        for isas in isas_rows:
+            aid = _str_id(isas.intervention_snp_association_id)
+            if aid in assoc_id_to_dict:
+                assoc_id_to_dict[aid]["sources"].append(_str_id(isas.study_id))
+
+        # 4. Attach snp_associations to each intervention
+        for intv in interventions:
+            intv["snp_associations"] = assocs_by_intervention.get(intv["_id"], [])
+
+        self._all_interventions = interventions
+        self._intervention_by_id = intervention_by_id
+        logger.info(
+            "[cache] Loaded %d interventions with %d snp_associations",
+            len(interventions),
+            len(isa_rows),
+        )
+
+    # ── Properties ──────────────────────────────────────────────────
+
+    @property
+    def all_tags(self) -> list[dict]:
+        """All active tags."""
+        if self._all_tags is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._all_tags
+
+    @property
+    def tag_by_name(self) -> dict[str, dict]:
+        """Tag lookup keyed by name."""
+        if self._tag_by_name is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._tag_by_name
+
+    @property
+    def tag_by_id(self) -> dict[str, dict]:
+        """Tag lookup keyed by UUID string."""
+        if self._tag_by_id is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._tag_by_id
+
+    @property
+    def all_snps(self) -> list[dict]:
+        """All active SNPs (with facts, unique_tags, tier_info reconstructed)."""
+        if self._all_snps is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._all_snps
+
+    @property
+    def snp_details(self) -> dict[int, dict]:
+        """SNP detail metadata keyed by gene_id."""
+        if self._snp_details is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._snp_details
+
+    @property
+    def snp_interactions(self) -> dict:
+        """SNP interaction documents keyed by _id (with snps[] reconstructed)."""
+        if self._snp_interactions is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._snp_interactions
+
+    @property
+    def all_interventions(self) -> list[dict]:
+        """All active interventions (with snp_associations[] reconstructed)."""
+        if self._all_interventions is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._all_interventions
+
+    @property
+    def intervention_by_id(self) -> dict[str, dict]:
+        """Intervention lookup keyed by UUID string."""
+        if self._intervention_by_id is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._intervention_by_id
+
+    @property
+    def all_studies(self) -> list[dict]:
+        """All active studies."""
+        if self._all_studies is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._all_studies
+
+    @property
+    def study_by_id(self) -> dict[str, dict]:
+        """Study lookup keyed by UUID string."""
+        if self._study_by_id is None:
+            raise RuntimeError(_NOT_LOADED)
+        return self._study_by_id

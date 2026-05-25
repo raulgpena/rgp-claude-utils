@@ -1,0 +1,72 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Stack
+
+- **Java 21** with **Spring Boot 3.3.x**
+- **Spring Cloud 2023.0.x** — Config Client (`spring.config.import`)
+- **Spring Data JPA** + **PostgreSQL** (UUID primary keys, JPA auditing enabled)
+- **Spring Security** — stateless JWT auth via `JwtAuthFilter` (JJWT 0.12.x API)
+- **Spring Actuator** + **Micrometer / OpenTelemetry** — traces exported via OTLP; Prometheus metrics at `/actuator/prometheus`
+- **Lombok** — used throughout; `@Data`, `@Builder`, `@RequiredArgsConstructor` are standard
+
+## Commands
+
+```bash
+# Build (skip tests)
+mvn package -DskipTests
+
+# Run with local profile (in-memory config, create-drop DDL, tracing disabled)
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# Run all tests
+mvn test
+
+# Run a single test class
+mvn test -Dtest=MomcorpUsersServiceApplicationTests
+
+# Run a single test method
+mvn test -Dtest=ClassName#methodName
+```
+
+Tests use `@ActiveProfiles("local")`, which disables Config Server import and sets `ddl-auto: create-drop`, so no external services are required.
+
+## Architecture
+
+```
+controller/   ← REST layer; thin, delegates to service
+service/      ← business logic; UserService also implements UserDetailsService
+repository/   ← Spring Data JPA interfaces only
+entity/       ← User implements UserDetails; Role is an enum stored via @ElementCollection
+dto/          ← Java records for request/response; UserResponse.from(User) is the mapping pattern
+security/     ← JwtService (token generation/validation), JwtAuthFilter (OncePerRequestFilter)
+config/       ← SecurityConfig (filter chain, beans)
+```
+
+**Auth flow**: `POST /auth/login` → `AuthenticationManager` → `JwtService.generateToken` → JWT returned. Subsequent requests pass `Authorization: Bearer <token>` → `JwtAuthFilter` sets `SecurityContext`.
+
+**RBAC**: `ROLE_ADMIN` is enforced both at the filter chain level (`SecurityConfig`) and at the method level (`@PreAuthorize`). The `User` entity is the `authentication.principal`, so SpEL like `#id == authentication.principal.id` works directly.
+
+## Configuration
+
+Required env vars in non-local environments:
+
+| Var | Purpose |
+|-----|---------|
+| `JWT_SECRET` | Base64-encoded HS256 key (≥ 256 bits) |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | PostgreSQL connection |
+| `CONFIG_SERVER_URL` | Spring Cloud Config Server base URL |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector base URL (e.g. `http://otel-collector:4318`) |
+
+The `local` profile (see `application-local.yml`) overrides `spring.config.import: ""` to skip Config Server, uses `ddl-auto: create-drop`, and sets a local JWT secret and disables tracing sampling.
+
+## JPA / DDL
+
+`ddl-auto` is `validate` in production — schema must exist before startup. In the `local` profile it is `create-drop`. When adding new entities or columns, update the schema manually or add a migration tool (Flyway/Liquibase) as a follow-up.
+
+## OpenTelemetry
+
+Tracing is wired via `micrometer-tracing-bridge-otel` + `opentelemetry-exporter-otlp`. Trace/span IDs are injected into log lines via the MDC pattern in `application.yml`. Sampling probability is controlled by `OTEL_SAMPLING_PROBABILITY` (default `1.0`; set to `0.0` locally).
+
+The OTel Java agent (attach via `-javaagent`) is an alternative to the in-process SDK and can be used instead by removing the OTel dependencies and attaching the agent JAR at startup.

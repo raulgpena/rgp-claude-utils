@@ -1,0 +1,92 @@
+[
+  {
+    "input": "Cardiac concern — 2 SNPs (lipid metabolism, coagulation)",
+    "concern_name": "Cardiac",
+    "snps": [
+      {
+        "genotype": "TT",
+        "odds_ratio": 2.1,
+        "genotype_frequency": 15.0,
+        "key_point": [
+          {
+            "title": "Elevated LDL risk",
+            "description": "This genotype is associated with reduced LDL receptor activity, leading to higher circulating LDL cholesterol levels and increased cardiovascular risk."
+          }
+        ],
+        "clinical_significance": "Risk variant associated with elevated LDL cholesterol and increased MI risk"
+      },
+      {
+        "genotype": "AG",
+        "odds_ratio": 1.4,
+        "genotype_frequency": 38.0,
+        "key_point": [
+          {
+            "title": "Moderate coagulation risk",
+            "description": "Heterozygous carriers have modestly elevated fibrinogen levels, which may contribute to thrombotic risk when combined with other cardiovascular risk factors."
+          }
+        ],
+        "clinical_significance": "Intermediate risk — moderately elevated fibrinogen associated with thrombotic events"
+      }
+    ]
+  },
+  {
+    "input": "Diabetes Type 2 concern — 2 SNPs (insulin secretion, glucose metabolism)",
+    "concern_name": "Diabetes Type 2",
+    "snps": [
+      {
+        "genotype": "CT",
+        "odds_ratio": 1.7,
+        "genotype_frequency": 42.0,
+        "key_point": [
+          {
+            "title": "Impaired insulin secretion",
+            "description": "This variant in a transcription factor gene reduces pancreatic beta cell function and impairs glucose-stimulated insulin secretion, significantly increasing T2DM risk."
+          }
+        ],
+        "clinical_significance": "Risk variant — most replicated T2DM susceptibility locus; impairs beta cell function"
+      },
+      {
+        "genotype": "AA",
+        "odds_ratio": 1.3,
+        "genotype_frequency": 28.0,
+        "key_point": [
+          {
+            "title": "Reduced insulin sensitivity",
+            "description": "Homozygous variant associated with reduced muscle glucose uptake and mild insulin resistance, particularly relevant in the context of sedentary lifestyle."
+          }
+        ],
+        "clinical_significance": "Moderate risk — contributes to insulin resistance in peripheral tissues"
+      }
+    ]
+  },
+  {
+    "input": "ADHD concern — 2 SNPs (dopamine signaling, executive function)",
+    "concern_name": "ADHD",
+    "snps": [
+      {
+        "genotype": "GG",
+        "odds_ratio": 1.6,
+        "genotype_frequency": 22.0,
+        "key_point": [
+          {
+            "title": "Reduced dopamine receptor density",
+            "description": "This variant is associated with lower D4 receptor expression in the prefrontal cortex, which can impair attention regulation and impulse control."
+          }
+        ],
+        "clinical_significance": "Risk variant — associated with reduced frontal dopamine signaling and ADHD symptoms"
+      },
+      {
+        "genotype": "TC",
+        "odds_ratio": 1.4,
+        "genotype_frequency": 45.0,
+        "key_point": [
+          {
+            "title": "Altered dopamine transporter activity",
+            "description": "Heterozygous variant linked to faster dopamine reuptake in striatal pathways, reducing dopaminergic tone and contributing to hyperactivity and inattention."
+          }
+        ],
+        "clinical_significance": "Moderate risk — affects striatal dopamine availability relevant to ADHD phenotype"
+      }
+    ]
+  }
+]

@@ -1,0 +1,200 @@
+"""HTTP request/response logging middleware with correlation ID propagation."""
+
+import json
+import logging
+import re
+import time
+import uuid
+from contextvars import ContextVar
+
+import sentry_sdk
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+_METRIC_PATH_ID_RE = re.compile(r"(?<=/)\d+(?=/|$)")
+
+
+def _sanitize_metric_path(path: str) -> str:
+    """Replace inline numeric IDs with {id} to keep metric cardinality low."""
+    return _METRIC_PATH_ID_RE.sub("{id}", path)
+
+
+logger = logging.getLogger(__name__)
+
+# Async-safe context variable — carries the correlation ID across the full request lifecycle
+_correlation_id_ctx: ContextVar[str] = ContextVar("correlation_id", default="")
+
+CORRELATION_ID_HEADER = "X-Correlation-ID"
+
+# Endpoints excluded from verbose INFO logging (still logged at DEBUG)
+_QUIET_PATHS = frozenset(["/health", "/metrics", "/favicon.ico"])
+
+# Path prefixes where request body is NEVER logged regardless of log level
+# (passwords, tokens, credentials)
+_SENSITIVE_PATH_PREFIXES = ("/auth/",)
+
+# Methods that can carry a body worth logging
+_BODY_METHODS = frozenset(["POST", "PUT", "PATCH"])
+
+# Maximum bytes read from the body before truncating
+_BODY_MAX_BYTES = 4_096
+
+
+def get_correlation_id() -> str:
+    """Return the correlation ID for the current request context."""
+    return _correlation_id_ctx.get()
+
+
+def _is_sensitive_path(path: str) -> bool:
+    return any(path.startswith(prefix) for prefix in _SENSITIVE_PATH_PREFIXES)
+
+
+async def _read_request_body(request: Request) -> str | None:
+    """Read and return the request body as a loggable string.
+
+    Starlette caches the raw bytes in request._body after the first read,
+    so the route handler will still receive the full body normally.
+
+    Returns None if the body should not be logged (binary, empty, etc.).
+    """
+    content_type = request.headers.get("content-type", "")
+
+    # Skip file uploads and other binary payloads
+    if "multipart/form-data" in content_type:
+        return "<multipart — skipped>"
+
+    raw: bytes = await request.body()
+    if not raw:
+        return None
+
+    truncated = len(raw) > _BODY_MAX_BYTES
+    chunk = raw[:_BODY_MAX_BYTES]
+
+    if "application/json" in content_type:
+        try:
+            parsed = json.loads(chunk)
+            suffix = " [truncated]" if truncated else ""
+            return json.dumps(parsed) + suffix
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+
+    try:
+        text = chunk.decode("utf-8", errors="replace")
+        return text + (" [truncated]" if truncated else "")
+    except Exception:
+        return f"<binary {len(raw)} bytes>"
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Log every HTTP request and its response with structured fields and elapsed time.
+
+    Each request receives a unique correlation ID (from the incoming
+    X-Correlation-ID header if present, otherwise generated). The ID is:
+    - Stored in a ContextVar so any logger in the call stack can read it
+    - Returned in the X-Correlation-ID response header for client tracing
+
+    Request body logging:
+    - Only active when the effective log level is DEBUG
+    - Never logged for sensitive paths (e.g. /auth/*)
+    - Skipped for multipart/form-data (file uploads)
+    - Truncated at 4 096 bytes
+
+    Log fields emitted:
+        Request start : correlation_id, http_method, http_path, http_query,
+                        client_ip, user_agent, [request_body]
+        Request end   : correlation_id, http_method, http_path, http_status,
+                        duration_ms, client_ip
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        correlation_id = request.headers.get(CORRELATION_ID_HEADER) or str(uuid.uuid4())
+        ctx_token = _correlation_id_ctx.set(correlation_id)
+
+        path = request.url.path
+        method = request.method
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "")
+        query = request.url.query or ""
+        is_quiet = path in _QUIET_PATHS
+
+        log_extra_base = {
+            "correlation_id": correlation_id,
+            "http_method": method,
+            "http_path": path,
+            "client_ip": client_ip,
+        }
+
+        if not is_quiet:
+            request_extra: dict = {
+                **log_extra_base,
+                "http_query": query,
+                "user_agent": user_agent,
+            }
+
+            # Body logging: DEBUG level + non-sensitive path + body-carrying method
+            if (
+                logger.isEnabledFor(logging.DEBUG)
+                and method in _BODY_METHODS
+                and not _is_sensitive_path(path)
+            ):
+                body = await _read_request_body(request)
+                if body is not None:
+                    request_extra["request_body"] = body
+
+            logger.info("Request started", extra=request_extra)
+
+        start = time.perf_counter()
+        status_code = 500
+
+        try:
+            response: Response = await call_next(request)
+            status_code = response.status_code
+        except Exception:
+            logger.exception(
+                "Unhandled exception during request processing",
+                extra=log_extra_base,
+            )
+            raise
+        finally:
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            _correlation_id_ctx.reset(ctx_token)
+
+            if not is_quiet:
+                log_fn = logger.warning if status_code >= 400 else logger.info
+                log_fn(
+                    "Request completed",
+                    extra={
+                        **log_extra_base,
+                        "http_status": status_code,
+                        "duration_ms": duration_ms,
+                    },
+                )
+
+                metric_attrs = {
+                    "endpoint": _sanitize_metric_path(path),
+                    "method": method,
+                    "status_class": f"{status_code // 100}xx",
+                }
+                sentry_sdk.metrics.distribution(
+                    "api.request.duration_ms",
+                    duration_ms,
+                    unit="millisecond",
+                    tags=metric_attrs,
+                )
+                sentry_sdk.metrics.incr(
+                    "api.request.count",
+                    1,
+                    tags={
+                        **metric_attrs,
+                        "outcome": "success" if status_code < 400 else "error",
+                    },
+                )
+            else:
+                logger.debug(
+                    "Health check",
+                    extra={**log_extra_base, "http_status": status_code},
+                )
+
+        response.headers[CORRELATION_ID_HEADER] = correlation_id
+        return response

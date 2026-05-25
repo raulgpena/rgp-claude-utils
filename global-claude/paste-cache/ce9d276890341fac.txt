@@ -1,0 +1,17 @@
+module.front_door.azurerm_cdn_frontdoor_rule_set.cors_rules[0]: Destroying... [id=/subscriptions/acfc3ea5-6766-4446-9c35-eab2cf526325/resourceGroups/rg-intellxxdna-lexxi-prod/providers/Microsoft.Cdn/profiles/intellxxdna-lexxi-prod-fd/ruleSets/intellxxdnalexxiprodcorsrules]
+azurerm_container_app_job.db_sync_export: Creating...
+azurerm_container_app_job.db_sync_export: Still creating... [00m10s elapsed]
+azurerm_container_app_job.db_sync_export: Still creating... [00m20s elapsed]
+azurerm_container_app_job.db_sync_export: Creation complete after 22s [id=/subscriptions/acfc3ea5-6766-4446-9c35-eab2cf526325/resourceGroups/rg-intellxxdna-lexxi-prod/providers/Microsoft.App/jobs/intellxxdna-lexxi-prod-db-export]
+azurerm_role_assignment.db_sync_export_storage: Creating...
+╷
+│ Error: deleting Front Door Rule Set: (Rule Set Name "intellxxdnalexxiprodcorsrules" / Profile Name "intellxxdna-lexxi-prod-fd" / Resource Group "rg-intellxxdna-lexxi-prod"): cdn.RuleSetsClient#Delete: Failure sending request: StatusCode=400 -- Original Error: Code="BadRequest" Message="This resource is still associated with a route. Please delete the association with the route first before deleting this resource."
+│ 
+│ 
+╵
+╷
+│ Error: authorization.RoleAssignmentsClient#Create: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="AuthorizationFailed" Message="The client 'rpena@intellxxdna.com' with object id 'fcbd76ac-1ca7-4e55-acfe-8ef79579e77d' does not have authorization to perform action 'Microsoft.Authorization/roleAssignments/write' over scope '/subscriptions/acfc3ea5-6766-4446-9c35-eab2cf526325/resourceGroups/rg-intellxxdna-lexxi-prod/providers/Microsoft.Storage/storageAccounts/ixdnaprodasarginte/providers/Microsoft.Authorization/roleAssignments/fb9b6bd9-f42f-cfbe-cfda-5eb5dc27a79d' or the scope is invalid. If access was recently granted, please refresh your credentials."
+│ 
+│   with azurerm_role_assignment.db_sync_export_storage,
+│   on main.tf line 1220, in resource "azurerm_role_assignment" "db_sync_export_storage":
+│ 1220: resource "azurerm_role_assignment" "db_sync_export_storage" {

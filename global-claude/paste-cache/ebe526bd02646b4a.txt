@@ -1,0 +1,23 @@
+Error: executing request: unexpected status 412 (412 There is currently a lease on the blob and no lease ID was specified in the request.) with LeaseIdMissing: There is currently a lease on the blob and no lease ID was specified in the request.
+│ RequestId:2d16f3fa-801e-0031-4f2c-e38483000000
+│ Time:2026-05-13T23:03:50.0289148Z
+│ 
+│ 
+╵
+╷
+│ Error: Failed to save state
+│ 
+│ Error saving state: executing request: unexpected status 412 (412 There is currently a lease on the blob and no lease ID was specified in the request.) with LeaseIdMissing: There is currently a lease on the blob and no
+│ lease ID was specified in the request.
+│ RequestId:bdf0a090-301e-0069-1f2c-e35cdc000000
+│ Time:2026-05-13T23:03:52.3555163Z
+╵
+╷
+│ Error: Failed to persist state to backend
+│ 
+│ The error shown above has prevented Terraform from writing the updated state to the configured backend. To allow for recovery, the state has been written to the file "errored.tfstate" in the current working directory.
+│ 
+│ Running "terraform apply" again at this point will create a forked state, making it harder to recover.
+│ 
+│ To retry writing this state, use the following command:
+│     terraform state push errored.tfstate

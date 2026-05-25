@@ -1,0 +1,52 @@
+##
+## Azure Static Web App Module - Main Configuration
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Creates Azure Static Web App for hosting Angular/React/Vue frontend
+## Configuration:
+## - SKU: Free tier (perfect for dev)
+## - GitHub Integration: Automated CI/CD from GitHub
+## - Build: Runs ng build, outputs to dist/
+## - Environment Variables: API endpoint and custom config
+##
+## Features:
+## - Free HTTPS with Azure-managed certificate
+## - Global CDN distribution
+## - GitHub Actions workflow (auto-generated)
+## - Staging environments for PR testing
+## - Custom domain support
+##
+
+##=============================================================================
+## STATIC WEB APP
+##=============================================================================
+## Core Static Web App resource for hosting the Angular frontend
+
+resource "azurerm_static_web_app" "app" {
+
+  name                = "${var.resource_prefix}-${var.app_name}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  sku_tier            = var.sku_tier
+  sku_size            = var.sku_size
+  tags                = var.tags
+}
+
+
+##=============================================================================
+## ENVIRONMENT CONFIGURATION
+##=============================================================================
+## Stores API endpoint and other configuration as app settings
+
+locals {
+  app_settings = merge(
+    {
+      "API_ENDPOINT" = var.api_endpoint
+    },
+    var.api_key != "" ? { "API_KEY" = var.api_key } : {},
+    var.environment_variables
+  )
+}
+
+
+# All outputs are defined in outputs.tf to keep module organization clean

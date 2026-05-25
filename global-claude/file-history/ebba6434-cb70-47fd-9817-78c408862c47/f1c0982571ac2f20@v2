@@ -1,0 +1,25 @@
+{
+  "id": "a1000014-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-001/entitlements",
+  "request": {
+    "method": "GET",
+    "urlPathEqualTo": "/v1/reports/rpt-001/entitlements"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "reportId": "rpt-001",
+      "purchasedPanelIds": ["BRCA-COMPREHENSIVE-V2"],
+      "includedPanels": [
+        {
+          "panelId": "BRCA-COMPREHENSIVE-V2",
+          "panelType": "BRCA",
+          "displayName": "BRCA Comprehensive Panel v2",
+          "snpCount": 8
+        }
+      ]
+    }
+  },
+  "priority": 1
+}

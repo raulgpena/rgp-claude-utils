@@ -1,0 +1,169 @@
+"""Centralized logging configuration for the application."""
+
+import json
+import logging
+import sys
+from datetime import datetime, timezone
+
+# Field names that must never appear in log output as plain text.
+# The filter replaces their values with [REDACTED] as a defense-in-depth
+# measure against accidental PHI / credential leakage via extra={}.
+_SENSITIVE_LOG_KEYS = frozenset(
+    {
+        "password",
+        "passwd",
+        "api_key",
+        "secret",
+        "token",
+        "authorization",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "genotype",
+        "dob",
+    }
+)
+
+# Standard LogRecord attributes that are never treated as structured extra fields.
+# Both formatters use this set to filter out built-in record internals.
+_LOG_RECORD_BUILTIN_ATTRS = frozenset(
+    [
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
+        "taskName",
+    ]
+)
+
+
+class _SensitiveDataFilter(logging.Filter):
+    """Redact sensitive field values from structured log records.
+
+    Applied to the root handler so no logger can accidentally emit PHI or
+    credentials through extra={} kwargs regardless of call site.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        for key in list(record.__dict__):
+            if key.lower() in _SENSITIVE_LOG_KEYS and not key.startswith("_"):
+                setattr(record, key, "[REDACTED]")
+        return True
+
+
+class _JsonFormatter(logging.Formatter):
+    """Structured JSON formatter for production/staging log aggregation (ELK, CloudWatch, etc.)."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        entry: dict = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+        }
+
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
+
+        # Merge any structured fields passed via extra={}
+        for key, value in record.__dict__.items():
+            if key not in _LOG_RECORD_BUILTIN_ATTRS and not key.startswith("_"):
+                entry[key] = value
+
+        return json.dumps(entry, default=str)
+
+
+class _DevFormatter(logging.Formatter):
+    """Colored human-readable formatter for development."""
+
+    _COLORS = {
+        "DEBUG": "\033[36m",
+        "INFO": "\033[32m",
+        "WARNING": "\033[33m",
+        "ERROR": "\033[31m",
+        "CRITICAL": "\033[35m",
+    }
+    _RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        color = self._COLORS.get(record.levelname, "")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        level = f"{color}{record.levelname:<8}{self._RESET}"
+        base = f"{timestamp} {level} [{record.name}] {record.getMessage()}"
+
+        # Append any structured extra fields inline for readability
+        extras = {
+            k: v
+            for k, v in record.__dict__.items()
+            if k not in _LOG_RECORD_BUILTIN_ATTRS and not k.startswith("_")
+        }
+        if extras:
+            fields = " ".join(f"{k}={v!r}" for k, v in extras.items())
+            base = f"{base} | {fields}"
+
+        if record.exc_info:
+            base += "\n" + self.formatException(record.exc_info)
+
+        return base
+
+
+def setup_logging(environment: str = "development", debug: bool = False) -> None:
+    """Configure application-wide logging.
+
+    - Development: colored, human-readable output to stdout
+    - Staging/Production: structured JSON output to stdout for log aggregation
+    - Log level: DEBUG when debug=True, WARNING in production, INFO otherwise
+    - Suppresses noisy third-party library loggers
+
+    Args:
+        environment: Runtime environment name ('development', 'staging', 'production')
+        debug: Enable DEBUG level logging regardless of environment
+    """
+    is_production = environment == "production"
+    is_development = environment == "development"
+
+    if debug:
+        level = logging.DEBUG
+    elif is_production:
+        level = logging.WARNING
+    else:
+        level = logging.INFO
+
+    formatter: logging.Formatter = _DevFormatter() if is_development else _JsonFormatter()
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    handler.setLevel(level)
+    handler.addFilter(_SensitiveDataFilter())
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers.clear()
+    root.addHandler(handler)
+
+    # Suppress noisy third-party loggers
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").propagate = True
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO if debug else logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("multipart").setLevel(logging.WARNING)

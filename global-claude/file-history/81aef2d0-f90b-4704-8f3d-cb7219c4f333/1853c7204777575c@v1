@@ -1,0 +1,114 @@
+#!/bin/bash
+# Setup script for Terraform Azure Infrastructure
+# This script initializes the project and prepares it for deployment
+
+set -e
+
+echo "=========================================="
+echo "Terraform Azure Infrastructure Setup"
+echo "=========================================="
+echo ""
+
+# Check prerequisites
+echo "Checking prerequisites..."
+
+if ! command -v terraform &> /dev/null; then
+    echo "❌ Terraform is not installed"
+    echo "   Install from: https://www.terraform.io/downloads.html"
+    exit 1
+fi
+
+if ! command -v az &> /dev/null; then
+    echo "❌ Azure CLI is not installed"
+    echo "   Install from: https://docs.microsoft.com/cli/azure/install-azure-cli"
+    exit 1
+fi
+
+echo "✅ Terraform version: $(terraform version -json | jq -r '.terraform_version' 2>/dev/null || terraform version | head -1)"
+echo "✅ Azure CLI version: $(az version --output tsv 2>/dev/null | grep -i azure-cli | awk '{print $NF}' || az --version | head -1)"
+echo ""
+
+# Check Azure authentication
+echo "Checking Azure authentication..."
+
+# Check for Service Principal credentials (environment variables)
+if [ -n "$ARM_SUBSCRIPTION_ID" ] && [ -n "$ARM_CLIENT_ID" ]; then
+    echo "✅ Using Service Principal authentication"
+    echo "   Subscription: $ARM_SUBSCRIPTION_ID"
+    echo "   Client ID: ${ARM_CLIENT_ID:0:8}..."
+elif [ -f "$HOME/.azure/credentials" ]; then
+    echo "✅ Using credentials from ~/.azure/credentials"
+elif az account show &> /dev/null; then
+    ACCOUNT=$(az account show --query name -o tsv)
+    SUBSCRIPTION=$(az account show --query id -o tsv)
+    echo "✅ Logged in with Azure CLI"
+    echo "   Account: $ACCOUNT"
+    echo "   Subscription: $SUBSCRIPTION"
+    echo ""
+    echo "⚠️  For production, consider using Service Principal instead of az login"
+    echo "   Run: ./sp-setup.sh create terraform-lexxi-sp"
+    echo "   Or read: SERVICE_PRINCIPAL_SETUP.md"
+else
+    echo "❌ Not authenticated with Azure"
+    echo ""
+    echo "Choose one of these methods:"
+    echo "1. Service Principal (recommended): ./sp-setup.sh create"
+    echo "2. Azure CLI: az login"
+    echo ""
+    echo "For more info: cat SERVICE_PRINCIPAL_SETUP.md"
+    exit 1
+fi
+echo ""
+
+# Select environment
+echo "Select resources to initialize:"
+echo "0) global (shared resources - MUST be first)"
+echo "1) dev"
+echo "2) staging"
+echo "3) prod"
+echo "4) all (global + all environments)"
+read -p "Enter choice (0-4): " choice
+
+case $choice in
+    0) ENVS="global" ;;
+    1) ENVS="dev" ;;
+    2) ENVS="staging" ;;
+    3) ENVS="prod" ;;
+    4) ENVS="global dev staging prod" ;;
+    *) echo "Invalid choice"; exit 1 ;;
+esac
+
+# Process each environment
+for ENV in $ENVS; do
+    echo ""
+    echo "=========================================="
+    if [ "$ENV" = "global" ]; then
+        echo "Initializing GLOBAL shared resources..."
+        cd "global"
+    else
+        echo "Initializing $ENV environment..."
+        cd "environments/$ENV"
+    fi
+    echo "=========================================="
+    echo ""
+
+    # Initialize Terraform
+    echo "Running terraform init..."
+    terraform init
+
+    echo ""
+    echo "Validating configuration..."
+    terraform validate
+
+    echo ""
+    echo "✅ $ENV initialized successfully!"
+    
+    # Go back to root
+    cd ../..
+done
+echo "- Test credentials: ./sp-setup.sh test"
+echo ""
+echo "Documentation:"
+echo "- SERVICE_PRINCIPAL_SETUP.md - Service Principal authentication guide"
+echo "- README.md                  - Project overview"
+echo "- QUICKSTART.md              - Quick commands reference"

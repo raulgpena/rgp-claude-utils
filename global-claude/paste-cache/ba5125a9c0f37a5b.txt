@@ -1,0 +1,12 @@
+Connecting to the container 'wiremock'...
+2026-05-15T17:42:31.45861  Successfully Connected to container: 'wiremock' [Revision: 'intellxxdna-lexxi-dev-tr-mock--hoby1t7', Replica: 'intellxxdna-lexxi-dev-tr-mock--hoby1t7-58797cc8cb-xjjdl']
+2026-05-15T17:42:24.2885729Z stdout F 2026-05-15 17:42:24.287 Verbose logging enabled
+2026-05-15T17:42:24.7393690Z stderr F Exception in thread "main" com.github.tomakehurst.wiremock.standalone.MappingFileException: Error loading file /home/wiremock/./mappings/03-patient-pt002.json:
+2026-05-15T17:42:24.7394253Z stderr F Unrecognized field "urlPathEqualTo" (class com.github.tomakehurst.wiremock.matching.RequestPattern), not marked as ignorable
+2026-05-15T17:42:24.7395848Z stderr F     at com.github.tomakehurst.wiremock.standalone.JsonFileMappingsSource.loadMappingsInto(JsonFileMappingsSource.java:126)
+2026-05-15T17:42:24.7395930Z stderr F     at com.github.tomakehurst.wiremock.core.WireMockApp.loadMappingsUsing(WireMockApp.java:281)
+2026-05-15T17:42:24.7396047Z stderr F     at com.github.tomakehurst.wiremock.core.WireMockApp.loadDefaultMappings(WireMockApp.java:275)
+2026-05-15T17:42:24.7396072Z stderr F     at com.github.tomakehurst.wiremock.core.WireMockApp.<init>(WireMockApp.java:138)
+2026-05-15T17:42:24.7396615Z stderr F     at com.github.tomakehurst.wiremock.WireMockServer.<init>(WireMockServer.java:74)
+2026-05-15T17:42:24.7396654Z stderr F     at com.github.tomakehurst.wiremock.standalone.WireMockServerRunner.run(WireMockServerRunner.java:71)
+2026-05-15T17:42:24.7397690Z stderr F     at wiremock.Run.main(Run.java:23)

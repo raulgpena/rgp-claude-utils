@@ -1,0 +1,77 @@
+[
+  {
+    "input": "What lifestyle changes would you recommend based on these results?",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What lifestyle changes would you recommend for this patient based on these genomic results?"
+      }
+    ],
+    "concerns": [
+      {
+        "concern_name": "Cardiac",
+        "snps": [
+          {
+            "gene_symbol": "PCSK9",
+            "rs_id": "rs11591147",
+            "genotype": "TT",
+            "odds_ratio": 2.1,
+            "genotype_frequency": 15.0,
+            "key_point": [{"title": "Elevated LDL risk", "description": "Reduced LDL receptor activity leading to higher LDL cholesterol."}],
+            "clinical_significance": "Risk variant associated with elevated LDL and increased MI risk"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "input": "Are there specific supplements that might help this patient?",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Based on the genomic profile, are there specific supplements or nutritional interventions that might benefit this patient?"
+      }
+    ],
+    "concerns": [
+      {
+        "concern_name": "Methylation",
+        "snps": [
+          {
+            "gene_symbol": "MTHFR",
+            "rs_id": "rs1801133",
+            "genotype": "TT",
+            "odds_ratio": 1.9,
+            "genotype_frequency": 10.0,
+            "key_point": [{"title": "Reduced folate metabolism", "description": "Thermolabile MTHFR enzyme with ~70% reduced activity, impairing methylation cycle."}],
+            "clinical_significance": "Clinically significant — impairs homocysteine metabolism and methylation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "input": "How does this variant affect medication response?",
+    "messages": [
+      {
+        "role": "user",
+        "content": "How does this variant affect the patient's response to medications, particularly statins?"
+      }
+    ],
+    "concerns": [
+      {
+        "concern_name": "Cardiac",
+        "snps": [
+          {
+            "gene_symbol": "SLCO1B1",
+            "rs_id": "rs4149056",
+            "genotype": "TC",
+            "odds_ratio": 4.5,
+            "genotype_frequency": 18.0,
+            "key_point": [{"title": "Statin myopathy risk", "description": "Reduced hepatic uptake of statins leading to elevated plasma levels and increased myopathy risk."}],
+            "clinical_significance": "High clinical relevance — significantly increased risk of statin-induced myopathy"
+          }
+        ]
+      }
+    ]
+  }
+]

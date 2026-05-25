@@ -1,0 +1,135 @@
+"""Evaluation script for the Lexxi Concerns Extractor agent.
+
+Runs the concerns extractor against a fixed dataset of clinician messages,
+scores each output with an LLM judge (concerns_accuracy), and logs the
+results as an MLflow Evaluation Run under the 'lexxi-evaluation' experiment.
+
+Usage (from the project root):
+    uv run python scripts/evaluation/evaluate_concerns.py
+
+    # Override the run name (useful for comparing prompt versions):
+    EVAL_RUN_NAME="concerns-prompt-v2" uv run python scripts/evaluation/evaluate_concerns.py
+
+What appears in MLflow after the run:
+    Experiments → lexxi-evaluation → <run>
+      Metrics tab : concerns_accuracy/mean, concerns_accuracy/p90, ...
+      Evaluation  : table with input / output / score + rationale per case
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+import mlflow
+from agents import Runner
+from dotenv import load_dotenv
+
+from app.ai.agent_extract_concern import get_agent, parse_concerns_from_items
+from app.ai.mlflow_tracker import configure as configure_mlflow
+from app.core.config import get_settings
+from scripts.evaluation.judges import concerns_accuracy
+
+load_dotenv()
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+settings = get_settings()
+
+configure_mlflow(
+    enabled=settings.mlflow.mlflow_enabled,
+    tracking_uri=settings.mlflow.mlflow_tracking_uri,
+    experiment_name="lexxi-evaluation",
+    username=settings.mlflow.mlflow_username,
+    password=settings.mlflow.mlflow_password,
+    tracing_enabled=False,  # Skip tracing during eval — we only want eval metrics
+)
+
+RUN_NAME = os.environ.get("EVAL_RUN_NAME", "concerns-extractor-eval")
+DATA_PATH = Path(__file__).parent / "data" / "concerns_dataset.json"
+
+# ── Predict function ──────────────────────────────────────────────────────────
+
+
+async def _run_agent(messages: list[dict], available_concerns: list[str]) -> str:
+    agent = get_agent(available_concerns=available_concerns)
+    result = await Runner.run(agent, input=messages)
+    concerns = parse_concerns_from_items(result)
+    return json.dumps(concerns.model_dump() if concerns else {"concerns": []}, indent=2)
+
+
+def predict_fn(inputs: dict) -> str:
+    """Called by mlflow.genai.evaluate() once per row with the inputs dict."""
+    return asyncio.run(
+        _run_agent(
+            messages=inputs["messages"],
+            available_concerns=inputs["available_concerns"],
+        )
+    )
+
+
+# ── Run evaluation ────────────────────────────────────────────────────────────
+
+
+def main() -> None:
+    records = json.loads(DATA_PATH.read_text())
+
+    # mlflow.genai.evaluate() expects a list of dicts with keys:
+    #   inputs       — passed to predict_fn
+    #   expectations — passed to scorers that need ground truth
+    data = [
+        {
+            "inputs": {
+                "messages": r["messages"],
+                "available_concerns": r["available_concerns"],
+            },
+            "expectations": {"expected_concerns": r["expected_concerns"]},
+        }
+        for r in records
+    ]
+
+    print(f"Running evaluation: '{RUN_NAME}' — {len(data)} test cases")
+    print(f"Tracking server : {settings.mlflow.mlflow_tracking_uri}")
+    print(f"Experiment      : lexxi-evaluation\n")
+
+    with mlflow.start_run(run_name=RUN_NAME):
+        mlflow.log_params({
+            "dataset": DATA_PATH.name,
+            "num_test_cases": len(data),
+            "model": "gpt-5.4",
+            "agent": "concerns_extractor",
+        })
+
+        results = mlflow.genai.evaluate(
+            data=data,
+            scorers=[concerns_accuracy],
+            predict_fn=predict_fn,
+        )
+
+    print("\n── Aggregate metrics ────────────────────────────────────────────")
+    for metric, value in sorted(results.metrics.items()):
+        print(f"  {metric:<45} {value:.4f}")
+
+    print("\n── Per-case scores ──────────────────────────────────────────────")
+    table = results.tables.get("eval_results_table")
+    if table is not None:
+        score_col = next(
+            (c for c in table.columns if "concerns_accuracy" in c and "score" in c),
+            None,
+        )
+        rationale_col = next(
+            (c for c in table.columns if "concerns_accuracy" in c and "rationale" in c),
+            None,
+        )
+        cols = [c for c in ["inputs", score_col, rationale_col] if c]
+        if cols:
+            print(table[cols].to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,265 @@
+erraform will perform the following actions:
+  # azurerm_container_app.keycloak will be updated in-place
+  ~ resource "azurerm_container_app" "keycloak" {
+        id                            = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.App/containerApps/intellxxdna-lexxi-dev-auth"
+        name                          = "intellxxdna-lexxi-dev-auth"
+        tags                          = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+        # (4 unchanged blocks hidden)
+    }
+  # azurerm_container_app.lexxi will be updated in-place
+  ~ resource "azurerm_container_app" "lexxi" {
+        id                            = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.App/containerApps/intellxxdna-lexxi-dev-lexxi"
+        name                          = "intellxxdna-lexxi-dev-lexxi"
+        tags                          = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+        # (5 unchanged blocks hidden)
+    }
+  # azurerm_container_app.mlflow will be updated in-place
+  ~ resource "azurerm_container_app" "mlflow" {
+        id                            = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.App/containerApps/intellxxdna-lexxi-dev-mlflow"
+        name                          = "intellxxdna-lexxi-dev-mlflow"
+        tags                          = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+        # (5 unchanged blocks hidden)
+    }
+  # azurerm_container_app.rd will be updated in-place
+  ~ resource "azurerm_container_app" "rd" {
+        id                            = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.App/containerApps/intellxxdna-lexxi-dev-rd"
+        name                          = "intellxxdna-lexxi-dev-rd"
+        tags                          = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+        # (5 unchanged blocks hidden)
+    }
+  # azurerm_container_app_environment.env will be updated in-place
+  ~ resource "azurerm_container_app_environment" "env" {
+        id                                 = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.App/managedEnvironments/intellxxdna-lexxi-dev-cae"
+        name                               = "intellxxdna-lexxi-dev-cae"
+        tags                               = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (11 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.keycloak_*** will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "keycloak_***" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/keycloak-***/0694008f0e344cb7a44885fa4b0734a0"
+        name                    = "keycloak-***"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.keycloak_db_url will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "keycloak_db_url" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/keycloak-db-url/910b49a64b1345bc8981678b0e544f3d"
+        name                    = "keycloak-db-url"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.lexxi_cors_allow_origins will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "lexxi_cors_allow_origins" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/lexxi-cors-allow-origins/ea30002703684deabdd2d5537b8f603d"
+        name                    = "lexxi-cors-allow-origins"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.lexxi_***_db will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "lexxi_***_db" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/lexxi-***-db/50759779bdfb44b198e8cfc1183ecc21"
+        name                    = "lexxi-***-db"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.lexxi_sentry_dsn will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "lexxi_sentry_dsn" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/lexxi-sentry-dsn/130c73b2a2c444c5b6ee7b725f41c022"
+        name                    = "lexxi-sentry-dsn"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_***_username will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_***_username" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-***-username/a5d398f1742044a484f9fa6d1deba074"
+        name                    = "mlflow-***-username"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_allowed_origins will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_allowed_origins" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-allowed-origins/18e5c529478f48e4bbbcb2fead099870"
+        name                    = "mlflow-allowed-origins"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_artifact_root will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_artifact_root" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-artifact-root/eb2e1cfabb034bc380f882e9732e65bd"
+        name                    = "mlflow-artifact-root"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_enabled will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_enabled" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-enabled/9c1278a6134148dd8a8e91590d08c08f"
+        name                    = "mlflow-enabled"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_tracing_enabled will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_tracing_enabled" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-tracing-enabled/5b6c8d78f02e4bb6b9cb194b93ba8150"
+        name                    = "mlflow-tracing-enabled"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.mlflow_tracking_uri will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "mlflow_tracking_uri" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/mlflow-tracking-uri/ec625e21c7fb437590cfea85b438cdbe"
+        name                    = "mlflow-tracking-uri"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.***_host will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "***_host" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/***-host/89e6439650844f1f815e17aaae1eaffa"
+        name                    = "***-host"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.***_port will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "***_port" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/***-port/8991248749d54c68b08b62139be032ea"
+        name                    = "***-port"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.rd_access_token_expire_minutes will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "rd_access_token_expire_minutes" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/rd-access-token-expire-minutes/624301976b2147dfaac9d938b922be60"
+        name                    = "rd-access-token-expire-minutes"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.rd_cors_allow_origins will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "rd_cors_allow_origins" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/rd-cors-allow-origins/faad415034ca4b60a1753f5c4174af67"
+        name                    = "rd-cors-allow-origins"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.rd_environment will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "rd_environment" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/rd-environment/aa8b3189787146d88013c4763e7a2563"
+        name                    = "rd-environment"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.rd_sentry_dsn will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "rd_sentry_dsn" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/rd-sentry-dsn/d9d8e679b46447c8b6ce4b13d441cf85"
+        name                    = "rd-sentry-dsn"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_key_vault_secret.rd_swagger_username will be updated in-place
+  ~ resource "azurerm_key_vault_secret" "rd_swagger_username" {
+        id                      = "https://ixdna-vault-dev-kv.vault.azure.net/secrets/rd-swagger-username/9659b9e51a574e1cb1a9ff2281750bd2"
+        name                    = "rd-swagger-username"
+        tags                    = {}
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_static_web_app_custom_domain.lexxi_dev[0] will be updated in-place
+  ~ resource "azurerm_static_web_app_custom_domain" "lexxi_dev" {
+        id                = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Web/staticSites/intellxxdna-lexxi-dev-lexxis/customDomains/lexxi-az-dev.ixxdna.com"
+        # (3 unchanged attributes hidden)
+    }
+  # azurerm_static_web_app_custom_domain.rd_dev[0] will be updated in-place
+  ~ resource "azurerm_static_web_app_custom_domain" "rd_dev" {
+        id                = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Web/staticSites/intellxxdna-lexxi-dev-rd/customDomains/data-cleansing-az-dev.ixxdna.com"
+        # (3 unchanged attributes hidden)
+    }
+  # azurerm_static_web_app_custom_domain.rnd_dev[0] will be updated in-place
+  ~ resource "azurerm_static_web_app_custom_domain" "rnd_dev" {
+        id                = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Web/staticSites/intellxxdna-lexxi-dev-rd/customDomains/rnd-dev.ixxdna.com"
+        # (3 unchanged attributes hidden)
+    }
+  # module.static_web_app_lexxi.azurerm_static_web_app.app will be updated in-place
+  ~ resource "azurerm_static_web_app" "app" {
+        id                                 = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Web/staticSites/intellxxdna-lexxi-dev-lexxis"
+        name                               = "intellxxdna-lexxi-dev-lexxis"
+        tags                               = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+    }
+  # module.static_web_app_rd.azurerm_static_web_app.app will be updated in-place
+  ~ resource "azurerm_static_web_app" "app" {
+        id                                 = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Web/staticSites/intellxxdna-lexxi-dev-rd"
+        name                               = "intellxxdna-lexxi-dev-rd"
+        tags                               = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (9 unchanged attributes hidden)
+    }
+  # module.storage.azurerm_log_analytics_workspace.law will be updated in-place
+  ~ resource "azurerm_log_analytics_workspace" "law" {
+        id                                      = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.OperationalInsights/workspaces/intellxxdna-lexxi-dev-law"
+        name                                    = "intellxxdna-lexxi-dev-law"
+        tags                                    = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (14 unchanged attributes hidden)
+    }
+  # module.storage.azurerm_storage_account.sa will be updated in-place
+  ~ resource "azurerm_storage_account" "sa" {
+        id                                = "/subscriptions/***/resourceGroups/rg-intellxxdna-lexxi-dev/providers/Microsoft.Storage/storageAccounts/ixdnadevasarginte"
+        name                              = "ixdnadevasarginte"
+        tags                              = {
+            "Company"     = "intellxxdna"
+            "CreatedDate" = "2026"
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "lexxi"
+        }
+        # (41 unchanged attributes hidden)
+        # (3 unchanged blocks hidden)
+    }
+Plan: 0 to add, 30 to change, 0 to destroy.

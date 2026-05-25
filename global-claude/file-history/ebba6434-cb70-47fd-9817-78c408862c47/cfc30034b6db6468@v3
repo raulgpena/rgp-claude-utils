@@ -1,0 +1,83 @@
+{
+  "id": "a1000018-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-002/snps",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/reports/rpt-002/snps"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "items": [
+        {
+          "rsId": "rs1333049",
+          "gene": "CDKN2B-AS1",
+          "genotype": "GG",
+          "alleleCount": null,
+          "oddsRatio": 1.47,
+          "genotypeFrequency": 0.31,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": []
+        },
+        {
+          "rsId": "rs10757274",
+          "gene": "CDKN2B-AS1",
+          "genotype": "AG",
+          "alleleCount": null,
+          "oddsRatio": 1.29,
+          "genotypeFrequency": 0.22,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": []
+        },
+        {
+          "rsId": "rs4977574",
+          "gene": "CDKN2B-AS1",
+          "genotype": "GG",
+          "alleleCount": null,
+          "oddsRatio": 1.57,
+          "genotypeFrequency": 0.28,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": ["gwas_hit"]
+        },
+        {
+          "rsId": "rs2681472",
+          "gene": "ATP2B1",
+          "genotype": "AA",
+          "alleleCount": null,
+          "oddsRatio": 0.87,
+          "genotypeFrequency": 0.38,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": []
+        },
+        {
+          "rsId": "rs17249754",
+          "gene": "ATP2B1",
+          "genotype": "GG",
+          "alleleCount": null,
+          "oddsRatio": 0.79,
+          "genotypeFrequency": 0.41,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": []
+        },
+        {
+          "rsId": "rs3918226",
+          "gene": "NOS3",
+          "genotype": "CT",
+          "alleleCount": null,
+          "oddsRatio": 1.31,
+          "genotypeFrequency": 0.19,
+          "panelInclusion": { "panelId": "HEART-HEALTH-V1", "panelType": "CARDIOVASCULAR" },
+          "tags": []
+        }
+      ],
+      "pagination": {
+        "total": 6,
+        "limit": 100,
+        "offset": 0,
+        "hasNext": false
+      }
+    }
+  },
+  "priority": 1
+}

@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "Create parent + service pom.xml",
+  "description": "Root pom.xml (parent, Spring Boot 3.4.1, Java 21, MapStruct, Lombok) and mc-persons-service/pom.xml inheriting from it",
+  "activeForm": "Writing Maven POMs",
+  "status": "in_progress",
+  "blocks": [],
+  "blockedBy": []
+}

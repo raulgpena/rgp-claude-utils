@@ -1,0 +1,23 @@
+#!/bin/bash
+##
+## Build and push the TargetR API mock image to ACR
+## Usage: ./build-push.sh <acr-login-server>
+## Example: ./build-push.sh ixdnaacrdev.azurecr.io
+##
+set -euo pipefail
+
+ACR_LOGIN_SERVER="${1:?Usage: $0 <acr-login-server>}"
+IMAGE="${ACR_LOGIN_SERVER}/targetr-api-mock:latest"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Logging in to ACR..."
+az acr login --name "$(echo "$ACR_LOGIN_SERVER" | cut -d. -f1)"
+
+echo "Building image: $IMAGE (linux/amd64)"
+docker build --platform linux/amd64 -t "$IMAGE" "$SCRIPT_DIR"
+
+echo "Pushing image: $IMAGE"
+docker push "$IMAGE"
+
+echo "Done. Image available at: $IMAGE"

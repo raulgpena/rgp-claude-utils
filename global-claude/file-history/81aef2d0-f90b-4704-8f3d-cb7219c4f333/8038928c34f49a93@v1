@@ -1,0 +1,428 @@
+##
+## Prod Environment - Input Variables
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Defines configurable parameters for the production environment
+## These variables can be overridden via:
+## - Command line: terraform apply -var="key=value"
+## - .tfvars files: terraform apply -var-file="prod.tfvars"
+## - Environment variables: TF_VAR_key=value
+##
+## Current defaults are optimized for development cost and simplicity
+##
+
+##=============================================================================
+## ENVIRONMENT CONFIGURATION
+##=============================================================================
+## Basic environment identifiers and cloud region settings
+##
+
+variable "environment" {
+
+  description = "Environment name (dev/staging/prod)"
+  type        = string
+  default     = "prod"
+}
+
+variable "azure_region" {
+
+  description = "Azure region for deployment (e.g., eastus2, westus2, eastus22)"
+  type        = string
+  default     = "eastus2"
+}
+
+
+
+##=============================================================================
+## ORGANIZATION IDENTIFIERS
+##=============================================================================
+## Used for resource naming, tagging, and resource group organization
+##
+
+variable "company_name" {
+
+  description = "Company name (used in resource naming)"
+  type        = string
+  default     = "intellxxdna"
+}
+
+variable "project_name" {
+
+  description = "Project name (used in resource naming)"
+  type        = string
+  default     = "lexxi"
+}
+
+
+
+##=============================================================================
+## NETWORK CONFIGURATION
+##=============================================================================
+## Virtual Network address space
+## Default: 10.2.0.0/16 provides 65,536 addresses
+## Subnets defined in main.tf:
+## - Database: 10.2.2.0/24 (250 usable addresses)
+## - Container-Apps: 10.2.3.0/24 (250 usable addresses)
+## - Legacy-Apps: 10.2.4.0/24 (250 usable addresses)
+##
+
+variable "vnet_address_space" {
+
+  description = "VNet address space in CIDR notation"
+  type        = list(string)
+  default     = ["10.2.0.0/16"]
+}
+
+
+
+##=============================================================================
+## POSTGRESQL DATABASE CONFIGURATION
+##=============================================================================
+## PostgreSQL Flexible Server deployment settings
+## Only used in dev environment for private database access
+##
+
+variable "postgres_admin_username" {
+
+  description = "PostgreSQL administrator username (8-128 characters)"
+  type        = string
+  sensitive   = true
+}
+
+variable "intellxxdna_admin_username" {
+
+  description = "Intellxxdna sername (8-128 characters)"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_admin_password" {
+
+  description = "PostgreSQL administrator password (8-128 characters, must include uppercase, lowercase, numbers, special chars)"
+  type        = string
+  sensitive   = true
+}
+
+variable "intellxxdna_admin_password" {
+
+  description = "Intellxxdna username password (8-128 characters, must include uppercase, lowercase, numbers, special chars)"
+  type        = string
+  sensitive   = true
+}
+
+
+
+##=============================================================================
+## CONTAINER APPS CONFIGURATION
+##=============================================================================
+## Shared Container Registry and Container Apps deployment settings
+##
+
+variable "shared_container_registry_login_server" {
+
+  description = "Shared ACR login server (e.g., ixdnaacrshared.azurecr.io)"
+  type        = string
+}
+
+variable "shared_container_registry_username" {
+
+  description = "ACR username for pulling images"
+  type        = string
+  sensitive   = true
+}
+
+variable "shared_container_registry_password" {
+
+  description = "ACR password for pulling images"
+  type        = string
+  sensitive   = true
+}
+
+variable "container_rd_app_image_name" {
+
+  description = "Container App image name (e.g., rd)"
+  type        = string
+  default     = "rd"
+}
+
+variable "container_lexxi_app_image_name" {
+
+  description = "Container App image name (e.g., lexxi)"
+  type        = string
+  default     = "lexxi"
+}
+
+variable "container_app_cpu" {
+
+  description = "Container App CPU allocation (e.g., 1.0)"
+  type        = string
+  default     = "1.0"
+}
+
+variable "container_app_memory" {
+
+  description = "Container App memory allocation (e.g., 2Gi)"
+  type        = string
+  default     = "2Gi"
+}
+
+variable "container_app_min_replicas" {
+
+  description = "Minimum number of replicas"
+  type        = number
+  default     = 1
+}
+
+variable "container_app_max_replicas" {
+
+  description = "Maximum number of replicas"
+  type        = number
+  default     = 1
+}
+
+
+
+##=============================================================================
+## APPLICATION GATEWAY CONFIGURATION
+##=============================================================================
+## Azure Front Door Configuration
+## Public-facing CDN with managed HTTPS and WAF for secure global access
+##
+
+variable "front_door_sku" {
+
+  description = "Front Door SKU: Standard_AzureFrontDoor (~$6/month) or Premium_AzureFrontDoor (~$25/month)"
+  type        = string
+  default     = "Standard_AzureFrontDoor"
+
+  validation {
+    condition     = contains(["Standard_AzureFrontDoor", "Premium_AzureFrontDoor"], var.front_door_sku)
+    error_message = "Front Door SKU must be Standard_AzureFrontDoor or Premium_AzureFrontDoor."
+  }
+}
+
+variable "enable_front_door_waf" {
+
+  description = "Enable Web Application Firewall on Front Door"
+  type        = bool
+  default     = true
+}
+
+variable "front_door_waf_mode" {
+
+  description = "WAF mode: Detection (log threats) or Prevention (block threats)"
+  type        = string
+  default     = "Detection"
+
+  validation {
+    condition     = contains(["Detection", "Prevention"], var.front_door_waf_mode)
+    error_message = "WAF mode must be Detection or Prevention."
+  }
+}
+
+
+
+##=============================================================================
+## STATIC WEB APP CONFIGURATION
+##=============================================================================
+## Azure Static Web App for Angular frontend deployment
+## Provides GitHub Actions CI/CD integration, managed HTTPS, and global CDN
+##
+
+variable "enable_custom_domain_to_lexxi" {
+
+  description = "Set to true only AFTER the CNAME record is created in DNS pointing to the default_host_name"
+  type        = bool
+  default     = false
+}
+
+variable "enable_custom_domain_to_rd" {
+
+  description = "Set to true only AFTER the CNAME record is created in DNS pointing to the default_host_name"
+  type        = bool
+  default     = false
+}
+
+
+variable "lexxi_github_repo_url" {
+
+  description = "GitHub repository URL (supports GitHub Enterprise URLs)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://.*\\.com/.*", var.lexxi_github_repo_url))
+    error_message = "GitHub repository URL must be a valid HTTPS URL."
+  }
+}
+
+variable "rd_github_repo_url" {
+
+  description = "GitHub repository URL (supports GitHub Enterprise URLs)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://.*\\.com/.*", var.rd_github_repo_url))
+    error_message = "GitHub repository URL must be a valid HTTPS URL."
+  }
+}
+
+variable "github_token" {
+
+  description = "GitHub Personal Access Token (PAT) for authentication"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.github_token) > 0
+    error_message = "GitHub token cannot be empty."
+  }
+}
+
+variable "lexxi_github_branch" {
+
+  description = "GitHub branch to deploy from"
+  type        = string
+  default     = "develop"
+}
+
+variable "rd_github_branch" {
+
+  description = "GitHub branch to deploy from"
+  type        = string
+  default     = "develop"
+}
+
+variable "swa_app_location" {
+
+  description = "Location of the app code relative to repository root"
+  type        = string
+  default     = "/"
+}
+
+variable "swa_output_location" {
+
+  description = "Build output directory (dist/ for Angular)"
+  type        = string
+  default     = "dist"
+}
+
+variable "swa_build_command" {
+
+  description = "Build command to run during deployment"
+  type        = string
+  default     = "npm run build"
+}
+
+
+
+##=============================================================================
+## KEYCLOAK CONFIGURATION
+##=============================================================================
+## Identity and Access Management (IAM) service configuration
+## Keycloak provides OIDC/OAuth2, LDAP/AD integration, and user management
+##
+
+variable "keycloak_admin_username" {
+
+  description = "Keycloak admin console username"
+  type        = string
+  default     = "admin"
+  sensitive   = false
+}
+
+variable "keycloak_admin_password" {
+
+  description = "Keycloak admin console password"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.keycloak_admin_password) >= 8
+    error_message = "Keycloak admin password must be at least 8 characters long."
+  }
+}
+
+
+
+##=============================================================================
+## RD CONFIGURATION
+##=============================================================================
+## RD Container App deployment settings
+##
+
+variable "rd_swagger_username" {
+
+  description = "RD Swagger username"
+  type        = string
+  sensitive   = false
+}
+
+variable "rd_swagger_pw" {
+
+  description = "RD Swagger password"
+  type        = string
+  sensitive   = true
+}
+
+variable "rd_environment" {
+
+  description = "RD environment"
+  type        = string
+  sensitive   = false
+}
+
+variable "rd_jwt_secret_key" {
+
+  description = "RD JWT secret key"
+  type        = string
+  sensitive   = true
+}
+
+variable "rd_cors_allow_origins" {
+
+  description = "RD CORS allow origins"
+  type        = string
+  sensitive   = false
+}
+
+variable "rd_access_token_expire_minutes" {
+
+  description = "RD access token expire minutes"
+  type        = string
+  sensitive   = false
+}
+
+variable "rd_sentry_dsn" {
+
+  description = "RD sentry DSN"
+  type        = string
+  sensitive   = false
+}
+
+
+
+##=============================================================================
+## LEXXI CONFIGURATION
+##=============================================================================
+## Lexxi Container App deployment settings
+##
+variable "lexxi_openai_token" {
+
+  description = "Lexxi OpenAI token"
+  type        = string
+  sensitive   = true
+}
+
+variable "lexxi_cors_allow_origins" {
+
+  description = "Lexxi CORS allow origins"
+  type        = string
+  sensitive   = false
+}
+
+variable "lexxi_sentry_dsn" {
+
+  description = "Lexxi sentry DSN"
+  type        = string
+  sensitive   = false
+}

@@ -1,0 +1,17 @@
+spring:
+  config:
+    import: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+security:
+  jwt:
+    secret: bG9jYWwtZGV2LW9ubHktc2VjcmV0LWtleS1hdC1sZWFzdC0yNTYtYml0cw==
+    expiration-ms: 3600000
+
+management:
+  tracing:
+    sampling:
+      probability: 0.0

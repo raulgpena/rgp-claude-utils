@@ -1,0 +1,93 @@
+2026-05-22T00:41:23.79293  Successfully Connected to container: 'rd' [Revision: 'intellxxdna-lexxi-dev-rd--0000012', Replica: 'intellxxdna-lexxi-dev-rd--0000012-6cd869c895-f8h6k']
+2026-05-22T00:41:22.9098601Z stderr F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+2026-05-22T00:41:22.9098730Z stderr F     await self.app(scope, receive, _send)
+2026-05-22T00:41:22.9098752Z stderr F   File "/app/.venv/lib/python3.12/site-packages/sentry_sdk/integrations/starlette.py", line 197, in _create_span_call
+2026-05-22T00:41:22.9098768Z stderr F     return await old_call(app, scope, new_receive, new_send, **kwargs)
+2026-05-22T00:41:22.9098790Z stderr F            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:22.9098804Z stderr F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 182, in __call__
+2026-05-22T00:41:22.9098816Z stderr F     with recv_stream, send_stream, collapse_excgroups():
+2026-05-22T00:41:22.9098828Z stderr F                                    ^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:22.9098839Z stderr F   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+2026-05-22T00:41:22.9098851Z stderr F     self.gen.throw(value)
+2026-05-22T00:41:22.9098863Z stderr F   File "/app/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+2026-05-22T00:41:22.9098875Z stderr F     raise exc
+2026-05-22T00:41:22.9098886Z stderr F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 184, in __call__
+2026-05-22T00:41:22.9098898Z stderr F     response = await self.dispatch_func(request, call_next)
+2026-05-22T00:41:22.9098911Z stderr F                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:22.9098924Z stderr F   File "/app/app/middleware/logging_middleware.py", line 185, in dispatch
+2026-05-22T00:41:22.9099008Z stderr F     sentry_sdk.metrics.count(
+2026-05-22T00:41:22.9099025Z stderr F     ^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:22.9099039Z stderr F AttributeError: module 'sentry_sdk.metrics' has no attribute 'count'
+2026-05-22T00:41:22.9166138Z stdout F 2026-05-22T00:41:22 DEBUG    [urllib3.connectionpool] https://o4511309635452928.ingest.us.sentry.io:443 "POST /api/4511314944983040/envelope/ HTTP/1.1" 200 0
+2026-05-22T00:41:24.7098355Z stdout F 2026-05-22T00:41:24 INFO     [app.middleware.logging_middleware] Request started | correlation_id='60834509-99a9-46fa-ad59-d7e4180a2904' http_method='GET' http_path='/' client_ip='100.100.0.89' http_query='' user_agent='Edge Health Probe'
+2026-05-22T00:41:24.7111189Z stdout F 2026-05-22T00:41:24 INFO     [app.middleware.logging_middleware] Request completed | correlation_id='60834509-99a9-46fa-ad59-d7e4180a2904' http_method='GET' http_path='/' client_ip='100.100.0.89' http_status=200 duration_ms=1.09
+2026-05-22T00:41:24.7144116Z stdout F 2026-05-22T00:41:24 ERROR    [app.main] Unhandled server error | http_method='GET' http_path='/' client_ip='100.100.0.89' exception_type='AttributeError'
+2026-05-22T00:41:24.7144459Z stdout F   + Exception Group Traceback (most recent call last):
+2026-05-22T00:41:24.7144563Z stdout F   |   File "/app/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 79, in collapse_excgroups
+2026-05-22T00:41:24.7144581Z stdout F   |     yield
+2026-05-22T00:41:24.7144594Z stdout F   |   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+2026-05-22T00:41:24.7144606Z stdout F   |     async with anyio.create_task_group() as task_group:
+2026-05-22T00:41:24.7144619Z stdout F   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7144631Z stdout F   |   File "/app/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 781, in __aexit__
+2026-05-22T00:41:24.7144643Z stdout F   |     raise BaseExceptionGroup(
+2026-05-22T00:41:24.7144656Z stdout F   | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+2026-05-22T00:41:24.7144668Z stdout F   +-+---------------- 1 ----------------
+2026-05-22T00:41:24.7144680Z stdout F     | Traceback (most recent call last):
+2026-05-22T00:41:24.7144710Z stdout F     |   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+2026-05-22T00:41:24.7144724Z stdout F     |     await self.app(scope, receive, _send)
+2026-05-22T00:41:24.7145239Z stdout F     |   File "/app/.venv/lib/python3.12/site-packages/sentry_sdk/integrations/starlette.py", line 197, in _create_span_call
+2026-05-22T00:41:24.7145279Z stdout F     |     return await old_call(app, scope, new_receive, new_send, **kwargs)
+2026-05-22T00:41:24.7145308Z stdout F     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7145329Z stdout F     |   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 182, in __call__
+2026-05-22T00:41:24.7145351Z stdout F     |     with recv_stream, send_stream, collapse_excgroups():
+2026-05-22T00:41:24.7145372Z stdout F     |                                    ^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7145393Z stdout F     |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+2026-05-22T00:41:24.7145426Z stdout F     |     self.gen.throw(value)
+2026-05-22T00:41:24.7145447Z stdout F     |   File "/app/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+2026-05-22T00:41:24.7145468Z stdout F     |     raise exc
+2026-05-22T00:41:24.7145488Z stdout F     |   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 184, in __call__
+2026-05-22T00:41:24.7145509Z stdout F     |     response = await self.dispatch_func(request, call_next)
+2026-05-22T00:41:24.7145529Z stdout F     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7145682Z stdout F     |   File "/app/app/middleware/logging_middleware.py", line 185, in dispatch
+2026-05-22T00:41:24.7145712Z stdout F     |     sentry_sdk.metrics.count(
+2026-05-22T00:41:24.7145737Z stdout F     |     ^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7145757Z stdout F     | AttributeError: module 'sentry_sdk.metrics' has no attribute 'count'
+2026-05-22T00:41:24.7145778Z stdout F     +------------------------------------
+2026-05-22T00:41:24.7145819Z stdout F 
+2026-05-22T00:41:24.7145842Z stdout F During handling of the above exception, another exception occurred:
+2026-05-22T00:41:24.7145862Z stdout F 
+2026-05-22T00:41:24.7146536Z stdout F Traceback (most recent call last):
+2026-05-22T00:41:24.7146609Z stdout F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+2026-05-22T00:41:24.7146632Z stdout F     await self.app(scope, receive, _send)
+2026-05-22T00:41:24.7146652Z stdout F   File "/app/.venv/lib/python3.12/site-packages/sentry_sdk/integrations/starlette.py", line 197, in _create_span_call
+2026-05-22T00:41:24.7146671Z stdout F     return await old_call(app, scope, new_receive, new_send, **kwargs)
+2026-05-22T00:41:24.7146692Z stdout F            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7146742Z stdout F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 182, in __call__
+2026-05-22T00:41:24.7146766Z stdout F     with recv_stream, send_stream, collapse_excgroups():
+2026-05-22T00:41:24.7146786Z stdout F                                    ^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7146806Z stdout F   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+2026-05-22T00:41:24.7146825Z stdout F     self.gen.throw(value)
+2026-05-22T00:41:24.7147213Z stdout F   File "/app/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+2026-05-22T00:41:24.7147255Z stdout F     raise exc
+2026-05-22T00:41:24.7147285Z stdout F   File "/app/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 184, in __call__
+2026-05-22T00:41:24.7147305Z stdout F     response = await self.dispatch_func(request, call_next)
+2026-05-22T00:41:24.7147325Z stdout F                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7147344Z stdout F   File "/app/app/middleware/logging_middleware.py", line 185, in dispatch
+2026-05-22T00:41:24.7147383Z stdout F     sentry_sdk.metrics.count(
+2026-05-22T00:41:24.7147403Z stdout F     ^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7147423Z stdout F AttributeError: module 'sentry_sdk.metrics' has no attribute 'count'
+2026-05-22T00:41:24.7309093Z stderr F ERROR:    Exception in ASGI application
+2026-05-22T00:41:24.7309488Z stderr F Traceback (most recent call last):
+2026-05-22T00:41:24.7309653Z stderr F   File "/app/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+2026-05-22T00:41:24.7309671Z stderr F     result = await app(  # type: ignore[func-returns-value]
+2026-05-22T00:41:24.7309684Z stderr F              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7309696Z stderr F   File "/app/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+2026-05-22T00:41:24.7309777Z stderr F     return await self.app(scope, receive, send)
+2026-05-22T00:41:24.7309792Z stderr F            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7309804Z stderr F   File "/app/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1133, in __call__
+2026-05-22T00:41:24.7309817Z stderr F     await super().__call__(scope, receive, send)
+2026-05-22T00:41:24.7309833Z stderr F   File "/app/.venv/lib/python3.12/site-packages/sentry_sdk/integrations/starlette.py", line 406, in _sentry_patched_asgi_app
+2026-05-22T00:41:24.7309846Z stderr F     return await middleware(scope, receive, send)
+2026-05-22T00:41:24.7309858Z stderr F            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-22T00:41:24.7309869Z stderr F   File "/app/.venv/lib/python3.12/site-packages/sentry_sdk/integrations/asgi.py", line 179, in _run_asgi3
+2026-05-22T00:41:24.7310593Z stderr F     return await self._run_app(scope, receive, send, asgi_version=3)

@@ -1,0 +1,20 @@
+fetch("https://api.ixxdna.com/rd/user/ec519e23-57e5-406d-9fdd-afa96c681101/change-password", {
+  "headers": {
+    "accept": "*/*",
+    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNDdhYzEwYi01OGNjLTQzNzItYTU2Ny0wZTAyYjJjM2Q0NzkiLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZSI6ImFkbWluIiwic2Vzc2lvbl9pZCI6InNlc3Npb25fY2VmOWY1OGQ2ZWJkNGJhM2E5NWYzMTAwYzc5NzRjOTQiLCJpYXQiOjE3NzgwNzg5MjEsImV4cCI6MTc3ODUxMDkyMSwianRpIjoiZGFiZTc3YmUtODg4My00MTI3LWJlZmMtN2IzMGZjNzg5MTIwIiwidHlwZSI6ImFjY2VzcyJ9.rBLIp9GRbwiJT2kXgtwAQH6PXZWuOO8IjD6WDwjunfE",
+    "content-type": "application/json",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"macOS\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-site",
+    "x-correlation-id": "2bd7ea85-38c4-4a04-bc9a-4d3007fcee16"
+  },
+  "body": "{\"new_password\":\"QwErTy_123\"}",
+  "method": "POST",
+  "mode": "cors",
+  "credentials": "include"
+});

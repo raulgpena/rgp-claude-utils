@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "Scaffold domain layer",
+  "description": "PersonId, PersonStatus, Person model; CreatePersonCommand, CreatePersonUseCase, FindPersonUseCase ports; PersonRepository out port; PersonDomainService; DomainException, PersonNotFoundException, PersonCannotBeUpdatedException",
+  "activeForm": "Writing domain layer",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

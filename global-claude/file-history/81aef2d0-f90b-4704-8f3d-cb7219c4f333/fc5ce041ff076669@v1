@@ -1,0 +1,193 @@
+##
+## Description: Global Shared Resources - Main Configuration
+## Purpose: Define all shared resources used by all environments
+## Strategy: Centralized, single instance for cost efficiency and unified management
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Resources Defined:
+## 1. Shared Resource Group - Container for all global resources
+## 2. Shared Container Registry - Docker image repository for all environments
+##
+## Key Principles:
+## - All resources are "shared" (used by dev, staging, and prod)
+## - Standard SKU for production-grade reliability
+## - Single source of truth for container images
+## - Cost-efficient (one registry vs three per-environment)
+
+##=============================================================================
+## SHARED RESOURCE GROUP
+##=============================================================================
+## Container for all global resources
+##
+## Purpose:
+## - Logical grouping of shared infrastructure
+## - Billing and cost allocation for global resources
+## - Access control (RBAC) for shared resource management
+## - Compliance and governance for cross-environment resources
+##
+## Naming Convention:
+## - Format: rg-{company}-{project}-shared
+## - Example: rg-shokworks-intellxxdna-shared
+## - Suffix "shared" clearly indicates these are global resources
+
+resource "azurerm_resource_group" "shared_rg" {
+
+  name     = "rg-${var.company_name}-${var.project_name}-shared"
+  location = var.azure_region
+
+  # Tags for organization, billing, and compliance
+  tags = {
+    Environment = "shared"         # Indicates resource is shared across environments
+    Project     = var.project_name # Project identification
+    Company     = var.company_name # Company/tenant identification
+    ManagedBy   = "Terraform"      # Infrastructure as Code tracking
+    CreatedDate = "2026"           # Audit and creation date tracking
+  }
+
+  # Prevent accidental tag modification from outside Terraform
+  # Allows manual tag changes without Terraform conflicts
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+
+
+##=============================================================================
+## SHARED CONTAINER REGISTRY
+##=============================================================================
+## Azure Container Registry for storing Docker images
+##
+## Purpose:
+## - Central repository for all Docker images
+## - Accessible by dev, staging, and prod environments
+## - Single credentials for all image operations
+## - Cost savings vs per-environment registries
+##
+## Configuration Details:
+## - SKU: Standard (500GB storage, fast pull/push)
+## - Admin Enabled: true (allows direct credential access)
+## - Repositories: 3 (lexxi, data-cleansing, portal)
+##
+## Usage:
+## - Dev pulls images for testing
+## - Staging pulls images for pre-production testing
+## - Prod pulls images for production deployment
+## - CI/CD pushes new images from builds
+##
+## Access:
+## - All environments reference: ixdnashared.azurecr.io
+## - Single set of credentials managed centrally
+## - Service principals or admin credentials for CI/CD
+
+module "shared_container_registry" {
+
+  source = "../modules/container-registry"
+
+  # Resource placement
+  resource_group_name = azurerm_resource_group.shared_rg.name
+  location            = var.azure_region
+
+  # Naming and identification
+  environment     = "shared"                                  # Indicates shared resource
+  resource_prefix = "${var.company_name}-${var.project_name}" # Consistent naming
+
+  # Registry configuration
+  registry_name = var.registry_name # Azure globally unique name (lowercase, alphanumeric)
+  sku           = "Standard"        # Production-grade SKU (supports 500GB, fast operations)
+  admin_enabled = true              # Allow direct credential-based access
+
+  # Security configuration - Enable Defender for Container Registries
+  enable_defender = true # Enable Microsoft Defender vulnerability scanning on this subscription
+
+  # Repository definitions
+  # These are created dynamically when images are first pushed
+  # No pre-creation needed, but listed here for documentation
+  repositories = [
+    "lexxi", # Main application repository
+    "rd",    # Data processing service repository
+    "portal" # Web portal/UI repository
+  ]
+
+  # Resource organization and tracking
+  tags = {
+    Environment = "shared"         # Global resource indicator
+    Project     = var.project_name # Project identification
+    Company     = var.company_name # Company identification
+    ManagedBy   = "Terraform"      # Infrastructure as Code tracking
+    CreatedDate = "2026"           # Audit and creation date
+  }
+
+  # Dependency declaration
+  # Ensures resource group exists before registry is created
+  depends_on = [azurerm_resource_group.shared_rg]
+}
+
+
+##=============================================================================
+## PRE-CREATE REPOSITORIES
+##=============================================================================
+## Creates repositories immediately in the registry
+##
+## Without this, repositories are created lazily on first image push
+## With this, repositories are created during terraform apply
+##
+## Benefits:
+## - Repositories exist immediately after deployment
+## - Documentation of repository structure in code
+## - Ability to set permissions on repositories before use
+## - Consistent with Infrastructure as Code principles
+##
+## Method: Uses Azure CLI via local-exec
+## Requires: Azure CLI installed and authenticated
+## Note: || true prevents errors if repository already exists
+
+resource "null_resource" "create_repositories" {
+
+  for_each = toset(module.shared_container_registry.repositories)
+
+  provisioner "local-exec" {
+    command     = "az acr repository create --name ${var.registry_name} --repository ${each.value} || true"
+    interpreter = ["/bin/bash", "-c"]
+  }
+
+  depends_on = [module.shared_container_registry]
+}
+
+
+##=============================================================================
+## USAGE AND ACCESS PATTERNS
+##=============================================================================
+##
+## 1. DOCKER LOGIN (Local Development):
+##    az acr login --name <registry_name>
+##    docker login <registry_name>.azurecr.io
+##
+## 2. PUSH IMAGES (CI/CD):
+##    docker push <registry_name>.azurecr.io/lexxi:v1.0
+##    docker push <registry_name>.azurecr.io/data-cleansing:latest
+##    docker push <registry_name>.azurecr.io/portal:v2.0
+##
+## 3. PULL IMAGES (Container Apps, AKS):
+##    docker pull <registry_name>.azurecr.io/lexxi:v1.0
+##    - Works the same from dev, staging, or prod environments
+##
+## 4. VIEW OUTPUTS:
+##    make output ENV=global
+##    # Shows registry login server and push commands
+##
+## 5. GET CREDENTIALS:
+##    az acr credential show -n <registry_name>
+##    # Returns username and password for programmatic access
+##
+##=============================================================================
+## FUTURE ENHANCEMENTS
+##=============================================================================
+##
+## Potential additions to global resources:
+## - Key Vault for secret management
+## - Log Analytics for container logging
+## - Container Registry Tasks for automated builds
+## - Private endpoints for enhanced security
+## - Geo-replication for disaster recovery
+##
+## See SHARED_REGISTRY.md for detailed usage documentation

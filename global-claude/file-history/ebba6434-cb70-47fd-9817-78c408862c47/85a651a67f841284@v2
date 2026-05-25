@@ -1,0 +1,23 @@
+{
+  "id": "a1000012-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-003",
+  "request": {
+    "method": "GET",
+    "urlPathEqualTo": "/v1/reports/rpt-003"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "reportId": "rpt-003",
+      "patientId": "pt-003",
+      "reportVersion": "1",
+      "panelId": "COMPREHENSIVE-V3",
+      "panelType": "COMPREHENSIVE",
+      "completedAt": null,
+      "status": "processing",
+      "oddsRatioSources": null
+    }
+  },
+  "priority": 1
+}

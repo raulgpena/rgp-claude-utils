@@ -1,0 +1,9 @@
+{
+  "id": "8",
+  "subject": "Write Dockerfile and k8s base manifests",
+  "description": "Multi-stage Dockerfile (Maven builder + JRE runtime); k8s/base: deployment, service, configmap, hpa, kustomization.yaml",
+  "activeForm": "Writing Dockerfile and k8s manifests",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

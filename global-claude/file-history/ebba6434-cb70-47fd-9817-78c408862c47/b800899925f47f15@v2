@@ -1,0 +1,16 @@
+{
+  "id": "a1000023-0000-0000-0000-000000000001",
+  "name": "POST /v1/reports/{reportId}/lexxi-metadata",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/v1/reports/[^/]+/lexxi-metadata"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "success": true
+    }
+  },
+  "priority": 1
+}

@@ -1,0 +1,25 @@
+{
+  "id": "a1000015-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-002/entitlements",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/reports/rpt-002/entitlements"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "reportId": "rpt-002",
+      "purchasedPanelIds": ["HEART-HEALTH-V1"],
+      "includedPanels": [
+        {
+          "panelId": "HEART-HEALTH-V1",
+          "panelType": "CARDIOVASCULAR",
+          "displayName": "Heart Health Panel v1",
+          "snpCount": 6
+        }
+      ]
+    }
+  },
+  "priority": 1
+}

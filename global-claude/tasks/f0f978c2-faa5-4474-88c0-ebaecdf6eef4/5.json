@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "Scaffold persistence adapter",
+  "description": "PersonJpaEntity, PersonJpaRepository (Spring Data), PersonPersistenceMapper (MapStruct), PersonPersistenceAdapter implementing PersonRepository out port",
+  "activeForm": "Writing persistence adapter",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

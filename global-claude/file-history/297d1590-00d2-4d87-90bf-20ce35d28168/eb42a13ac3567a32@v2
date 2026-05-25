@@ -1,0 +1,3 @@
+package com.momcorp.usersservice.dto;
+
+public record AuthResponse(String token) {}

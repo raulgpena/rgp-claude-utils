@@ -1,0 +1,142 @@
+##
+## Azure Front Door Module - Input Variables
+## Author: Raul Peña (rpena@shokworks.io)
+##
+## Purpose: Configurable parameters for Azure Front Door with managed HTTPS
+## Designed for cost-optimized development deployments
+##
+
+##=============================================================================
+## REQUIRED INFRASTRUCTURE VARIABLES
+##=============================================================================
+
+variable "resource_group_name" {
+  description = "Name of the resource group"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (dev/staging/prod)"
+  type        = string
+}
+
+variable "resource_prefix" {
+  description = "Prefix for resource naming"
+  type        = string
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+}
+
+
+
+##=============================================================================
+## FRONT DOOR CONFIGURATION
+##=============================================================================
+
+variable "front_door_sku" {
+  description = "SKU of Front Door (Standard or Premium)"
+  type        = string
+  default     = "Standard_AzureFrontDoor"
+
+  validation {
+    condition     = contains(["Standard_AzureFrontDoor", "Premium_AzureFrontDoor"], var.front_door_sku)
+    error_message = "SKU must be either Standard_AzureFrontDoor or Premium_AzureFrontDoor."
+  }
+}
+
+
+
+##=============================================================================
+## BACKEND CONFIGURATION
+##=============================================================================
+
+variable "backends" {
+  description = "List of backends for Front Door with path-based routing"
+  type = list(object({
+    name              = string
+    fqdn              = string
+    port              = number
+    protocol          = string
+    path              = string
+    health_path       = optional(string, "/")
+    strip_path_prefix = optional(bool, false)
+    session_affinity  = optional(bool, false)
+  }))
+
+  validation {
+    condition = alltrue([
+      for backend in var.backends :
+      contains(["Http", "Https"], backend.protocol)
+    ])
+    error_message = "Backend protocol must be either Http or Https."
+  }
+}
+
+# Legacy single backend variables for backward compatibility
+variable "backend_fqdn" {
+  description = "FQDN of the Container App backend (deprecated - use backends instead)"
+  type        = string
+  default     = ""
+}
+
+variable "backend_port" {
+  description = "Port of the backend application (deprecated - use backends instead)"
+  type        = number
+  default     = 443
+}
+
+variable "backend_protocol" {
+  description = "Protocol for backend communication (deprecated - use backends instead)"
+  type        = string
+  default     = "Https"
+
+  validation {
+    condition     = contains(["", "Http", "Https"], var.backend_protocol)
+    error_message = "Backend protocol must be either Http or Https."
+  }
+}
+
+
+
+##=============================================================================
+## WAF CONFIGURATION
+##=============================================================================
+
+variable "enable_waf" {
+  description = "Enable Web Application Firewall (WAF)"
+  type        = bool
+  default     = true
+}
+
+
+variable "waf_mode" {
+  description = "WAF mode (Detection logs threats, Prevention blocks them)"
+  type        = string
+  default     = "Detection"
+
+  validation {
+    condition     = contains(["Detection", "Prevention"], var.waf_mode)
+    error_message = "WAF mode must be either Detection or Prevention."
+  }
+}
+
+
+
+##=============================================================================
+## CUSTOM DOMAIN
+##=============================================================================
+
+variable "custom_domain_host_name" {
+  description = "Custom domain hostname (e.g., api-dev.ixxdna.com). If provided, sets up a custom domain on Front Door."
+  type        = string
+  default     = null
+}
+
+variable "log_analytics_workspace_id" {
+  description = "Log Analytics Workspace ID for Front Door diagnostic logs (access, health probe, WAF)"
+  type        = string
+  default     = null
+}

@@ -1,0 +1,453 @@
+import logging
+from datetime import datetime, timedelta, timezone
+
+from ..auth import JWTManager, SecurityUtils, password_manager, rate_limiter
+from ..core.config import AuthSettings
+from ..core.exceptions import AuthenticationError
+from ..custom_types import UserRole
+from ..database import PostgresDatabase
+from ..entities import SessionDocument
+from ..models.auth_models import (
+    LoginRequest,
+    LoginResponse,
+    MFALoginResponse,
+    RefreshTokenResponse,
+    SessionInfo,
+)
+from ..models.user_models import UserProfile
+from ..repository import UserRepository
+from .session import SessionService
+
+logger = logging.getLogger(__name__)
+
+# Standard OAuth/JWT token type, not a password
+TOKEN_TYPE_BEARER = "Bearer"  # nosec B105
+
+
+class AuthService:
+    """Service for handling user authentication and authorization.
+
+    Manages login, logout, token refresh, and session validation with rate limiting,
+    account locking, and optional MFA support.
+    """
+
+    def __init__(self, database: PostgresDatabase, config: AuthSettings):
+        """Initialize the authentication service.
+
+        Args:
+            database: PostgreSQL database instance
+            config: Authentication settings configuration
+        """
+        self.config = config
+        self.jwt_manager = JWTManager(config)
+        self.password_manager = password_manager
+        self.rate_limiter = rate_limiter
+        self.session_service = SessionService(database)
+
+    async def authenticate_user(
+        self, login_request: LoginRequest, client_ip: str
+    ) -> LoginResponse | MFALoginResponse:
+        """Authenticate a user with email and password.
+
+        Args:
+            login_request: Login credentials and device information
+            client_ip: Client's IP address for rate limiting
+
+        Returns:
+            LoginResponse with tokens and session info, or MFALoginResponse if MFA required
+
+        Raises:
+            AuthenticationError: Invalid credentials, locked account, or service unavailable
+        """
+        try:
+            await self._check_rate_limiting({"ip": client_ip, "email": login_request.email})
+
+            user = await UserRepository.get_by_email(login_request.email)
+            if not user:
+                await self._record_failed_attempt({"ip": client_ip, "email": login_request.email})
+                raise AuthenticationError("Invalid email or password")
+
+            await self._check_account_status(user)
+
+            if not self.password_manager.verify_password(
+                login_request.password, user.get("password_hash")
+            ):
+                await self._handle_failed_login(user, client_ip)
+                raise AuthenticationError("Invalid email or password")
+
+            await self._reset_failed_attempts(user)
+
+            if user.get("mfa_enabled"):
+                return await self._handle_mfa_required(user, login_request, client_ip)
+
+            return await self._login(user, login_request, client_ip)
+        except AuthenticationError:
+            raise
+        except Exception as e:
+            logger.error(f"Authentication error for {login_request.email}: {str(e)}")
+            raise AuthenticationError("Authentication service temporarily unavailable", 500)
+
+    async def _check_rate_limiting(self, identifiers: dict[str, str]):
+        """Check rate limiting for authentication attempts.
+
+        Args:
+            identifiers: Dictionary of identifier types and values (e.g., ip, email)
+
+        Raises:
+            AuthenticationError: Too many login attempts
+        """
+        identifier_pairs = list(identifiers.items())
+
+        for identifier_type, identifier_value in identifier_pairs:
+            rate_limit_key = f"{identifier_type}:{identifier_value}"
+
+            is_limited, retry_after = self.rate_limiter.is_rate_limited(rate_limit_key)
+            if is_limited:
+                minutes_left = retry_after // 60
+                error_message = (
+                    f"Too many login attempts for {identifier_type}. "
+                    f"Try again in {minutes_left} minutes."
+                )
+                raise AuthenticationError(error_message, 429)
+
+    async def _check_account_status(self, user: dict):
+        """Check if user account is active and not locked.
+
+        Args:
+            user: User document from database
+
+        Raises:
+            AuthenticationError: Account deactivated or temporarily locked
+        """
+        if not user.get("is_active", True):
+            raise AuthenticationError("Account is deactivated")
+
+        if user.get("locked_until"):
+            locked_until = user["locked_until"]
+
+            if locked_until > datetime.now():
+                minutes_left = int((locked_until - datetime.now()).total_seconds() // 60)
+                raise AuthenticationError(
+                    f"Account is temporarily locked. Try again in {minutes_left} minutes.",
+                    423,
+                )
+
+    async def _handle_failed_login(self, user: dict, client_ip: str):
+        """Handle failed login attempt by incrementing counter and possibly locking account.
+
+        Args:
+            user: User document from database
+            client_ip: Client's IP address
+        """
+        await self._record_failed_attempt({"ip": client_ip, "email": user.get("email")})
+
+        user["failed_login_attempts"] = user.get("failed_login_attempts", 0) + 1
+
+        if user["failed_login_attempts"] >= self.config.login_max_attempts:
+            user["locked_until"] = datetime.now() + timedelta(
+                minutes=self.config.login_lockout_minutes
+            )
+            logger.warning(
+                f"Account {user.get('email')} locked due to"
+                f" {user.get('failed_login_attempts')} failed attempts"
+            )
+
+        await UserRepository.update(
+            user_id=user.get("_id"),
+            updates={
+                "failed_login_attempts": user.get("failed_login_attempts"),
+                "locked_until": user.get("locked_until"),
+            },
+        )
+
+    async def _reset_failed_attempts(self, user: dict):
+        """Reset failed login attempts counter and unlock account.
+
+        Args:
+            user: User document from database
+        """
+        if user.get("failed_login_attempts", 0) > 0 or user.get("locked_until"):
+            await UserRepository.update(
+                user_id=user.get("_id"),
+                updates={
+                    "failed_login_attempts": 0,
+                    "locked_until": None,
+                    "last_login": datetime.now(),
+                },
+            )
+
+    async def _record_failed_attempt(self, identifiers: dict[str, str]):
+        """Record failed authentication attempt for rate limiting.
+
+        Args:
+            identifiers: Dictionary of identifier types and values
+        """
+        identifier_pairs = list(identifiers.items())
+
+        for identifier_type, identifier_value in identifier_pairs:
+            rate_limit_key = f"{identifier_type}:{identifier_value}"
+            self.rate_limiter.record_attempt(rate_limit_key)
+
+    def _clear_rate_limit_attempts(self, identifiers: dict[str, str]):
+        """Clear rate limit attempts after successful login.
+
+        Args:
+            identifiers: Dictionary of identifier types and values
+        """
+        identifier_pairs = list(identifiers.items())
+
+        for identifier_type, identifier_value in identifier_pairs:
+            rate_limit_key = f"{identifier_type}:{identifier_value}"
+            self.rate_limiter.clear_attempts(rate_limit_key)
+
+    async def _handle_mfa_required(
+        self, user: dict, login_request: LoginRequest, client_ip: str
+    ) -> MFALoginResponse:
+        """Handle MFA-required authentication flow.
+
+        Args:
+            user: User document from database
+            login_request: Login credentials and device information
+            client_ip: Client's IP address
+
+        Returns:
+            MFA login response with temporary MFA token
+        """
+        session_id = SecurityUtils.generate_session_id()
+        mfa_token = self.jwt_manager.create_mfa_token(user.get("_id"), session_id)
+
+        user_profile = UserProfile(**user)
+
+        return MFALoginResponse(
+            mfa_token=mfa_token,
+            message="MFA verification required. Code sent to registered device.",
+            user=user_profile,
+        )
+
+    async def _login(
+        self, user: dict, login_request: LoginRequest, client_ip: str
+    ) -> LoginResponse:
+        """Complete login process and create session with tokens.
+
+        Args:
+            user: User document from database
+            login_request: Login credentials and device information
+            client_ip: Client's IP address
+
+        Returns:
+            Login response with access/refresh tokens and session info
+        """
+        session_id = SecurityUtils.generate_session_id()
+        device_fingerprint = SecurityUtils.generate_device_fingerprint(
+            login_request.device_info.user_agent or "", client_ip
+        )
+
+        access_expires_in = self.config.access_token_expire_minutes * 60
+        if login_request.remember_me:
+            session_expires = datetime.now(timezone.utc) + timedelta(
+                days=self.config.remember_me_expire_days
+            )
+        else:
+            session_expires = datetime.now(timezone.utc) + timedelta(
+                days=self.config.refresh_token_expire_days
+            )
+
+        access_token = self.jwt_manager.create_access_token(
+            user_id=user.get("_id"),
+            email=user.get("email"),
+            role=UserRole(user.get("role")),
+            session_id=session_id,
+        )
+
+        refresh_token = self.jwt_manager.create_refresh_token(
+            user_id=user.get("_id"), session_id=session_id, remember_me=login_request.remember_me
+        )
+
+        session_doc = SessionDocument(
+            session_id=session_id,
+            user_id=user.get("_id"),
+            access_token_jti=self.jwt_manager.decode_token(access_token)["jti"],
+            refresh_token_jti=self.jwt_manager.decode_token(refresh_token)["jti"],
+            ip_address=client_ip,
+            user_agent=login_request.device_info.user_agent if login_request.device_info else None,
+            device_fingerprint=device_fingerprint,
+            created_at=datetime.now(timezone.utc),
+            last_activity=datetime.now(timezone.utc),
+            expires_at=session_expires,
+            remember_me=login_request.remember_me,
+        )
+
+        session_created = await self.session_service.create_session(session_doc)
+        if not session_created:
+            raise AuthenticationError("Failed to create authentication session", 500)
+
+        await self._cleanup_old_sessions(user.get("_id"))
+
+        self._clear_rate_limit_attempts({"ip": client_ip, "email": user.get("email")})
+
+        user_profile = UserProfile(**user)
+        session_info = SessionInfo(**session_doc.model_dump())
+
+        logger.info(f"Successful login for user {user.get('email')} from IP {client_ip}")
+
+        return LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=access_expires_in,
+            user=user_profile,
+            session=session_info,
+        )
+
+    async def _cleanup_old_sessions(self, user_id: str):
+        """Clean up old sessions when max sessions limit is reached.
+
+        Args:
+            user_id: User ID to clean up sessions for
+        """
+        try:
+            sessions = await self.session_service.list_active_sessions_by_user(user_id)
+
+            if len(sessions) >= self.config.max_sessions_per_user:
+                sessions_to_deactivate = sessions[self.config.max_sessions_per_user :]
+                for session in sessions_to_deactivate:
+                    await self.session_service.update_session(
+                        session_id=session["session_id"], updates={"is_active": False}
+                    )
+        except Exception as e:
+            logger.error(f"Error cleaning up sessions for user {user_id}: {str(e)}")
+
+    async def logout(self, session_id: str) -> bool:
+        """Logout user by invalidating their session.
+
+        Args:
+            session_id: Session ID to invalidate
+
+        Returns:
+            True if session was invalidated successfully
+        """
+        try:
+            success = await self.session_service.invalidate_session(session_id)
+
+            if success:
+                logger.info(f"Session {session_id} successfully invalidated")
+            else:
+                logger.warning(f"Session {session_id} not found or already invalidated")
+
+            return success
+        except Exception as e:
+            logger.error(f"Error during logout for session {session_id}: {str(e)}")
+            return False
+
+    async def validate_session(self, session_id: str) -> SessionDocument | None:
+        """Validate and update session activity.
+
+        Args:
+            session_id: Session ID to validate
+
+        Returns:
+            Session document if valid, None otherwise
+        """
+        session = await self.session_service.get_session(session_id, check_expiry=True)
+
+        if not session:
+            return None
+
+        await self.session_service.update_session(
+            session_id=session_id,
+            updates={},
+        )
+
+        return session
+
+    async def refresh_token(
+        self, refresh_token: str, client_ip: str, user_agent: str = None
+    ) -> RefreshTokenResponse:
+        """Refresh access token using refresh token.
+
+        Args:
+            refresh_token: JWT refresh token
+            client_ip: Client's IP address
+            user_agent: Client's user agent string
+
+        Returns:
+            New access and refresh tokens with updated session info
+
+        Raises:
+            AuthenticationError: Invalid or expired refresh token
+        """
+        try:
+            await self._check_rate_limiting({"ip": client_ip})
+
+            try:
+                payload = self.jwt_manager.decode_token(refresh_token)
+            except Exception:
+                raise AuthenticationError("Invalid refresh token", 401)
+
+            session_id = payload.get("session_id")
+            user_id = payload.get("sub")
+
+            if not session_id or not user_id:
+                raise AuthenticationError("Invalid refresh token format", 401)
+
+            session = await self.session_service.get_session(session_id, check_expiry=True)
+            if not session:
+                raise AuthenticationError("Session not found or expired", 401)
+
+            user = await UserRepository.get_by_id(user_id)
+            if not user:
+                raise AuthenticationError("User not found", 401)
+
+            if not user.get("is_active"):
+                raise AuthenticationError("User account is inactive", 403)
+
+            if session.refresh_token_jti != payload.get("jti"):
+                raise AuthenticationError("Refresh token has been revoked", 401)
+
+            await self.session_service.update_session(
+                session_id=session_id,
+                updates={
+                    "ip_address": client_ip,
+                    "user_agent": user_agent or session.user_agent,
+                },
+            )
+
+            await UserRepository.update(
+                user_id=user_id,
+                updates={"last_login": datetime.now()},
+            )
+
+            access_token = self.jwt_manager.create_access_token(
+                user_id=user_id,
+                email=user.get("email"),
+                role=UserRole(user.get("role")),
+                session_id=session_id,
+                expires_minutes=self.config.access_token_expire_minutes,
+            )
+
+            new_refresh_token = self.jwt_manager.create_refresh_token(
+                user_id=user_id,
+                session_id=session_id,
+                expires_days=self.config.refresh_token_expire_days,
+            )
+
+            new_refresh_jti = self.jwt_manager.decode_token(new_refresh_token)["jti"]
+            await self.session_service.update_session(
+                session_id=session_id, updates={"refresh_token_jti": new_refresh_jti}
+            )
+
+            updated_user = await UserRepository.get_by_id(user_id)
+            updated_session = await self.session_service.get_session(session_id)
+            return RefreshTokenResponse(
+                access_token=access_token,
+                refresh_token=new_refresh_token,
+                expires_in=self.config.access_token_expire_minutes * 60,
+                token_type=TOKEN_TYPE_BEARER,
+                user=UserProfile(**updated_user),
+                session=SessionInfo(**updated_session.model_dump()),
+            )
+
+        except AuthenticationError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during token refresh: {str(e)}")
+            raise AuthenticationError("Token refresh failed", 500)

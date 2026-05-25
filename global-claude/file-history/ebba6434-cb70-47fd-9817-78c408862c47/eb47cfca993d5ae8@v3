@@ -1,0 +1,7 @@
+FROM --platform=linux/amd64 wiremock/wiremock:3.5.4
+
+# Copy all stub mappings into the WireMock mappings directory
+COPY mappings /home/wiremock/mappings
+
+# Start WireMock with response templating enabled (used for dynamic IDs in responses)
+CMD ["--global-response-templating", "--verbose", "--port", "8080"]

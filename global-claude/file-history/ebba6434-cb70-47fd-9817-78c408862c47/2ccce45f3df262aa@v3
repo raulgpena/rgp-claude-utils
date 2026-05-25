@@ -1,0 +1,23 @@
+{
+  "id": "a1000011-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-002",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/reports/rpt-002"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "reportId": "rpt-002",
+      "patientId": "pt-002",
+      "reportVersion": "1",
+      "panelId": "HEART-HEALTH-V1",
+      "panelType": "CARDIOVASCULAR",
+      "completedAt": "2026-01-08T14:05:33Z",
+      "status": "completed",
+      "oddsRatioSources": ["GWAS_CATALOG"]
+    }
+  },
+  "priority": 1
+}

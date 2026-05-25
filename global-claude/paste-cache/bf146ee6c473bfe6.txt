@@ -1,0 +1,124 @@
+Error: making Read request on Azure KeyVault Secret ***-host: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.***_host,
+  on main.tf line 301, in resource "azurerm_key_vault_secret" "***_host":
+ 301: resource "azurerm_key_vault_secret" "***_host" {
+Error: making Read request on Azure KeyVault Secret ***-port: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.***_port,
+  on main.tf line 310, in resource "azurerm_key_vault_secret" "***_port":
+ 310: resource "azurerm_key_vault_secret" "***_port" {
+Error: making Read request on Azure KeyVault Secret lexxi-***-db: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.lexxi_***_db,
+  on main.tf line 317, in resource "azurerm_key_vault_secret" "lexxi_***_db":
+ 317: resource "azurerm_key_vault_secret" "lexxi_***_db" {
+Error: making Read request on Azure KeyVault Secret ***-user: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.***_user,
+  on main.tf line 324, in resource "azurerm_key_vault_secret" "***_user":
+ 324: resource "azurerm_key_vault_secret" "***_user" {
+Error: making Read request on Azure KeyVault Secret ***-password: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.***_password,
+  on main.tf line 331, in resource "azurerm_key_vault_secret" "***_password":
+ 331: resource "azurerm_key_vault_secret" "***_password" {
+Error: making Read request on Azure KeyVault Secret rd-***-url: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.intellxxdna_***_url,
+  on main.tf line 338, in resource "azurerm_key_vault_secret" "intellxxdna_***_url":
+ 338: resource "azurerm_key_vault_secret" "intellxxdna_***_url" {
+Error: making Read request on Azure KeyVault Secret rd-swagger-username: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_swagger_username,
+  on main.tf line 419, in resource "azurerm_key_vault_secret" "rd_swagger_username":
+ 419: resource "azurerm_key_vault_secret" "rd_swagger_username" {
+Error: making Read request on Azure KeyVault Secret rd-swagger-pw: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_swagger_pw,
+  on main.tf line 429, in resource "azurerm_key_vault_secret" "rd_swagger_pw":
+ 429: resource "azurerm_key_vault_secret" "rd_swagger_pw" {
+Error: making Read request on Azure KeyVault Secret rd-environment: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_environment,
+  on main.tf line 439, in resource "azurerm_key_vault_secret" "rd_environment":
+ 439: resource "azurerm_key_vault_secret" "rd_environment" {
+Error: making Read request on Azure KeyVault Secret rd-jwt-secret-key: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_jwt_secret_key,
+  on main.tf line 449, in resource "azurerm_key_vault_secret" "rd_jwt_secret_key":
+ 449: resource "azurerm_key_vault_secret" "rd_jwt_secret_key" {
+Error: making Read request on Azure KeyVault Secret rd-cors-allow-origins: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_cors_allow_origins,
+  on main.tf line 459, in resource "azurerm_key_vault_secret" "rd_cors_allow_origins":
+ 459: resource "azurerm_key_vault_secret" "rd_cors_allow_origins" {
+Error: making Read request on Azure KeyVault Secret rd-access-token-expire-minutes: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_access_token_expire_minutes,
+  on main.tf line 469, in resource "azurerm_key_vault_secret" "rd_access_token_expire_minutes":
+ 469: resource "azurerm_key_vault_secret" "rd_access_token_expire_minutes" {
+Error: making Read request on Azure KeyVault Secret rd-sentry-dsn: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.rd_sentry_dsn,
+  on main.tf line 479, in resource "azurerm_key_vault_secret" "rd_sentry_dsn":
+ 479: resource "azurerm_key_vault_secret" "rd_sentry_dsn" {
+Error: making Read request on Azure KeyVault Secret lexxi-openai-token: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.lexxi_openai_token,
+  on main.tf line 614, in resource "azurerm_key_vault_secret" "lexxi_openai_token":
+ 614: resource "azurerm_key_vault_secret" "lexxi_openai_token" {
+Error: making Read request on Azure KeyVault Secret lexxi-cors-allow-origins: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.lexxi_cors_allow_origins,
+  on main.tf line 624, in resource "azurerm_key_vault_secret" "lexxi_cors_allow_origins":
+ 624: resource "azurerm_key_vault_secret" "lexxi_cors_allow_origins" {
+Error: making Read request on Azure KeyVault Secret lexxi-sentry-dsn: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.lexxi_sentry_dsn,
+  on main.tf line 634, in resource "azurerm_key_vault_secret" "lexxi_sentry_dsn":
+ 634: resource "azurerm_key_vault_secret" "lexxi_sentry_dsn" {
+Error: making Read request on Azure KeyVault Secret keycloak-db-url: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.keycloak_db_url,
+  on main.tf line 826, in resource "azurerm_key_vault_secret" "keycloak_db_url":
+ 826: resource "azurerm_key_vault_secret" "keycloak_db_url" {
+Error: making Read request on Azure KeyVault Secret keycloak-db-username: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.keycloak_db_username,
+  on main.tf line 836, in resource "azurerm_key_vault_secret" "keycloak_db_username":
+ 836: resource "azurerm_key_vault_secret" "keycloak_db_username" {
+Error: making Read request on Azure KeyVault Secret keycloak-db-password: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.keycloak_db_password,
+  on main.tf line 843, in resource "azurerm_key_vault_secret" "keycloak_db_password":
+ 843: resource "azurerm_key_vault_secret" "keycloak_db_password" {
+Error: making Read request on Azure KeyVault Secret keycloak-***: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.keycloak_***,
+  on main.tf line 850, in resource "azurerm_key_vault_secret" "keycloak_***":
+ 850: resource "azurerm_key_vault_secret" "keycloak_***" {
+Error: making Read request on Azure KeyVault Secret keycloak-***-password: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.keycloak_***_password,
+  on main.tf line 857, in resource "azurerm_key_vault_secret" "keycloak_***_password":
+ 857: resource "azurerm_key_vault_secret" "keycloak_***_password" {
+Error: making Read request on Azure KeyVault Secret mlflow-tracking-uri: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_tracking_uri,
+  on main.tf line 1081, in resource "azurerm_key_vault_secret" "mlflow_tracking_uri":
+1081: resource "azurerm_key_vault_secret" "mlflow_tracking_uri" {
+Error: making Read request on Azure KeyVault Secret mlflow-flask-secret-key: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_flask_secret_key,
+  on main.tf line 1091, in resource "azurerm_key_vault_secret" "mlflow_flask_secret_key":
+1091: resource "azurerm_key_vault_secret" "mlflow_flask_secret_key" {
+Error: making Read request on Azure KeyVault Secret mlflow-***-username: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_***_username,
+  on main.tf line 1101, in resource "azurerm_key_vault_secret" "mlflow_***_username":
+1101: resource "azurerm_key_vault_secret" "mlflow_***_username" {
+Error: making Read request on Azure KeyVault Secret mlflow-***-password: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_***_password,
+  on main.tf line 1111, in resource "azurerm_key_vault_secret" "mlflow_***_password":
+1111: resource "azurerm_key_vault_secret" "mlflow_***_password" {
+Error: making Read request on Azure KeyVault Secret mlflow-backend-store-uri: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_backend_store_uri,
+  on main.tf line 1121, in resource "azurerm_key_vault_secret" "mlflow_backend_store_uri":
+1121: resource "azurerm_key_vault_secret" "mlflow_backend_store_uri" {
+Error: making Read request on Azure KeyVault Secret mlflow-artifact-root: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_artifact_root,
+  on main.tf line 1131, in resource "azurerm_key_vault_secret" "mlflow_artifact_root":
+1131: resource "azurerm_key_vault_secret" "mlflow_artifact_root" {
+Error: making Read request on Azure KeyVault Secret mlflow-storage-connection-string: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_storage_connection_string,
+  on main.tf line 1141, in resource "azurerm_key_vault_secret" "mlflow_storage_connection_string":
+1141: resource "azurerm_key_vault_secret" "mlflow_storage_connection_string" {
+Error: making Read request on Azure KeyVault Secret mlflow-enabled: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_enabled,
+  on main.tf line 1151, in resource "azurerm_key_vault_secret" "mlflow_enabled":
+1151: resource "azurerm_key_vault_secret" "mlflow_enabled" {
+Error: making Read request on Azure KeyVault Secret mlflow-tracing-enabled: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_tracing_enabled,
+  on main.tf line 1161, in resource "azurerm_key_vault_secret" "mlflow_tracing_enabled":
+1161: resource "azurerm_key_vault_secret" "mlflow_tracing_enabled" {
+Error: making Read request on Azure KeyVault Secret mlflow-allowed-origins: keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=***;oid=3296046d-1778-4702-9974-c9d1fe7c5801;iss=https://sts.windows.net/***/' does not have secrets get permission on key vault 'ixdna-vault-dev-kv;location=eastus2'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+  with azurerm_key_vault_secret.mlflow_allowed_origins,
+  on main.tf line 1171, in resource "azurerm_key_vault_secret" "mlflow_allowed_origins":
+1171: resource "azurerm_key_vault_secret" "mlflow_allowed_origins" {

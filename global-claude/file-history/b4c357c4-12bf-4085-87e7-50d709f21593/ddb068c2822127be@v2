@@ -1,0 +1,118 @@
+"""MLflow tracking utilities for OpenAI agent calls.
+
+Provides a lightweight context manager that wraps agent invocations to log
+parameters and metrics. Degrades gracefully to a no-op when MLflow is
+disabled or the tracking server is unreachable — agent calls are never
+blocked by tracking failures.
+
+Usage:
+    with agent_run("clinical_discussion", {"model": "gpt-4o", "concern": name}) as metrics:
+        result = await Runner.run(agent, message)
+        metrics["output_chars"] = len(result.final_output)
+    # latency_ms is recorded automatically on exit
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from contextlib import contextmanager
+from typing import Any, Generator
+
+logger = logging.getLogger(__name__)
+
+_enabled: bool = False
+
+
+def configure(*, enabled: bool, tracking_uri: str, experiment_name: str) -> None:
+    """Configure MLflow tracking. Called once at application startup.
+
+    Args:
+        enabled: Whether to enable MLflow tracking.
+        tracking_uri: MLflow tracking server URI.
+        experiment_name: Name of the MLflow experiment to log runs under.
+    """
+    global _enabled
+    _enabled = enabled
+
+    if not enabled:
+        logger.info("[mlflow] Tracking disabled")
+        return
+
+    try:
+        import mlflow
+
+        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_experiment(experiment_name)
+        logger.info(
+            "[mlflow] Tracking configured",
+            extra={"tracking_uri": tracking_uri, "experiment": experiment_name},
+        )
+    except Exception:
+        _enabled = False
+        logger.warning("[mlflow] Failed to configure tracking — tracking disabled", exc_info=True)
+
+
+@contextmanager
+def agent_run(
+    run_name: str,
+    params: dict[str, Any],
+    tags: dict[str, str] | None = None,
+) -> Generator[dict[str, float], None, None]:
+    """Context manager for tracking an OpenAI agent run with MLflow.
+
+    Logs ``params`` when the run starts and automatically records
+    ``latency_ms`` on exit. The caller may add extra metrics to the
+    yielded ``metrics`` dict before the context exits.
+
+    When tracking is disabled or the tracking server is unreachable, this
+    is a silent no-op — the wrapped agent call proceeds normally.
+
+    Args:
+        run_name: Human-readable name for the MLflow run.
+        params: Key/value pairs to log as MLflow parameters.
+        tags: Optional key/value string tags for the run.
+
+    Yields:
+        A mutable ``metrics`` dict. Add float values to be logged on exit.
+        ``latency_ms`` is set automatically and must not be overwritten.
+
+    Example::
+
+        with agent_run("clinical_chat", {"model": "gpt-4o"}) as metrics:
+            result = await Runner.run(agent, prompt)
+            metrics["output_chars"] = len(result.final_output)
+    """
+    metrics: dict[str, float] = {}
+    start = time.perf_counter()
+
+    if not _enabled:
+        yield metrics
+        return
+
+    import mlflow  # deferred — only imported when tracking is active
+
+    tracking_active = False
+    try:
+        mlflow.start_run(run_name=run_name, tags=tags or {})
+        mlflow.log_params({k: str(v)[:250] for k, v in params.items()})
+        tracking_active = True
+    except Exception:
+        logger.warning("[mlflow] Could not start run '%s'", run_name, exc_info=True)
+
+    try:
+        yield metrics
+    finally:
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        metrics.setdefault("latency_ms", duration_ms)
+
+        if tracking_active:
+            try:
+                mlflow.log_metrics(metrics)
+            except Exception:
+                logger.debug("[mlflow] Could not log metrics for run '%s'", run_name)
+            finally:
+                try:
+                    mlflow.end_run()
+                except Exception:
+                    logger.debug("[mlflow] Could not end run '%s'", run_name)

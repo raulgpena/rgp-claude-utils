@@ -1,0 +1,44 @@
+"""Sentry custom metric name constants and timing context manager."""
+
+import time
+from contextlib import contextmanager
+
+import sentry_sdk
+
+# ── Authentication ────────────────────────────────────────────────────────────
+AUTH_LOGIN_ATTEMPT = "auth.login.attempt"
+AUTH_LOGIN_DURATION_MS = "auth.login.duration_ms"
+AUTH_TOKEN_REFRESH = "auth.token.refresh"
+AUTH_ACCOUNT_LOCKED = "auth.account.locked"
+AUTH_SESSION_CLEANUP = "auth.session.cleanup"
+AUTH_LOGOUT = "auth.logout"
+
+# ── SNP Data Operations ───────────────────────────────────────────────────────
+SNP_OPERATION = "snp.operation"
+SNP_LIST_RESULT_COUNT = "snp.list.result_count"
+SNP_LIST_DURATION_MS = "snp.list.duration_ms"
+
+
+def auth_outcome_from_status(status_code: int) -> str:
+    """Map an AuthenticationError HTTP status code to a readable metric outcome tag."""
+    return {
+        429: "rate_limited",
+        423: "account_locked",
+        403: "account_inactive",
+        500: "error",
+    }.get(status_code, "invalid_credentials")
+
+
+@contextmanager
+def timed_metric(name: str, tags: dict | None = None):
+    """Emit a distribution metric (milliseconds) for the enclosed block on exit."""
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        sentry_sdk.metrics.distribution(
+            name,
+            (time.perf_counter() - t0) * 1000,
+            unit="millisecond",
+            tags=tags or {},
+        )

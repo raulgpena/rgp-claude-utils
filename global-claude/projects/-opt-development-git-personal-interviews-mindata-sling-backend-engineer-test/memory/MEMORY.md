@@ -1,0 +1,1 @@
+- [Hotel Search Service project](project_hotel_search.md) — Mindata/Sling backend test: Spring Boot 3.3 + Java 21 + Kafka + PostgreSQL, hexagonal arch

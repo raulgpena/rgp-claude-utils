@@ -1,0 +1,20 @@
+{
+  "id": "a1000016-0000-0000-0000-000000000001",
+  "name": "GET /v1/reports/rpt-003/entitlements - report still processing",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v1/reports/rpt-003/entitlements"
+  },
+  "response": {
+    "status": 409,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "error": {
+        "code": "REPORT_NOT_READY",
+        "message": "Report is still processing. Entitlements are not available until the report status is 'completed'.",
+        "correlationId": null
+      }
+    }
+  },
+  "priority": 1
+}
