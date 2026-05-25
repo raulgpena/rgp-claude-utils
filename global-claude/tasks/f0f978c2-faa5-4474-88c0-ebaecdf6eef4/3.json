@@ -1,9 +1,0 @@
-{
-  "id": "3",
-  "subject": "Scaffold application layer",
-  "description": "PersonApplicationService implementing both use case ports, @Transactional, orchestrating domain service + repository",
-  "activeForm": "Writing application layer",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

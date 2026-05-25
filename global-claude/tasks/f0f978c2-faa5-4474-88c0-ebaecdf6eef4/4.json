@@ -1,9 +1,0 @@
-{
-  "id": "4",
-  "subject": "Scaffold web adapter",
-  "description": "PersonController, CreatePersonRequest, PersonResponse DTOs, PersonWebMapper (MapStruct), GlobalExceptionHandler (@RestControllerAdvice)",
-  "activeForm": "Writing web adapter",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

@@ -1,9 +1,0 @@
-{
-  "id": "9",
-  "subject": "Write test stubs and hexagonal .gitkeep placeholders",
-  "description": "PersonDomainServiceTest (plain JUnit5), PersonControllerTest (@WebMvcTest), PersonPersistenceAdapterIT (@DataJpaTest + Testcontainers); .gitkeep for empty adapter packages",
-  "activeForm": "Writing test stubs and placeholders",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

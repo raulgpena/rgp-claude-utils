@@ -1,9 +1,0 @@
-{
-  "id": "7",
-  "subject": "Write resources and Liquibase migration",
-  "description": "application.yml with full observability wiring (OTLP, Prometheus, Actuator, virtual threads, structured logging); Liquibase changelog master + 2026-001 migration creating persons table",
-  "activeForm": "Writing resources",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

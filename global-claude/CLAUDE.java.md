@@ -3,11 +3,10 @@
 ## Stack
 - Java 21
 - Spring Boot 3.x (Actuator, Spring Data JPA, Spring data Redis)
-- Spring Cloud (Gateway, Config, OpenFeign, Eureka/Consul)
+- Spring Cloud (Config, OpenFeign, k8s)
 - Maven
 - JUnit 5 + Mockito + AssertJ
 - MapStruct (object mapping)
-- Lombok (reduce boilerplate — use judiciously)
 - OpenTelemetry
 
 ---
@@ -51,6 +50,9 @@ src/main/java/com/company/<service>/
 - Use `@ControllerAdvice` + `@ExceptionHandler` for centralized error handling.
 - Externalize all config via `@ConfigurationProperties` (typed, validated with Bean Validation).
 - Use **Spring profiles** (`dev`, `staging`, `prod`) — never `if` blocks checking environment names in code.
+- Read the propterties files of each environment from k8s configmaps and secrets.
+- All yml files must be documented
+- All properties must be documented
 
 ## Persistence (JPA / Spring Data)
 - JPA entities live in `infrastructure/persistence/` — they are **never** the same as domain entities.
@@ -75,6 +77,19 @@ src/main/java/com/company/<service>/
 - Max line length: 120 characters.
 - Use `final` on fields and parameters where possible to signal immutability intent.
 - No `System.out.println` — always SLF4J logger.
+- All classes must be documented with Javadoc. (Mehods and fields need it too):
+  . The Javadoc tag @author with Raul Pena (raul.pena@gmail.com)
+  . The Javadoc tag @since with jdk 21
+  . The Javadoc tag @version with 1.0.0
+  . The Javadoc classes header must be:
+    ```
+    /*
+     * @className.java <date>
+     * Copyright 2026 Momcorp, Inc. All rights reserved.
+     * Momcorp/CONFIDENTIAL
+     * */
 
+    ```
+  
 ## Project rules
 - .gitignore for java applications.

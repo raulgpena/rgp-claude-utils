@@ -1,1 +1,0 @@
-- [Project Stack and Structure](project_stack.md) — Java 21 + Spring Boot 3.3.x, Maven, JWT/OTel/PostgreSQL, scaffolded May 2026

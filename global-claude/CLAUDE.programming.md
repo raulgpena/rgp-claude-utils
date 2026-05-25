@@ -1,5 +1,6 @@
 
 # CLAUDE.programming.md — Microservices Commons
+
 ## Clean Architecture & Hexagonal Architecture
 
 ---
@@ -205,8 +206,19 @@ When Claude Code generates a new microservice or feature, **always follow this o
 - PRs must include: description, test evidence, migration notes if applicable.
 - No commented-out code committed.
 
-
 ---
 
 ## 9. Database
 - Write **Liquibase** migrations for all schema changes.
+- Save the migrations in the project root in **db/migrations** folder
+- Use **docker-compose.yml** to run the database.
+
+---
+
+## 10. Integration Rest API Test
+- Write **postman** collections to test all rest api endpoints
+- Save the collections in the project root in **postman** folder
+- Create a script to run the collections with Newman
+- Use enviroment variables to set the values.
+- Use pre-request scripts to set the values.
+- Use tests to validate the responses.
